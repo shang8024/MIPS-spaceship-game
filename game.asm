@@ -11,16 +11,17 @@
 # -Display height in pixels: 256 (128 units)
 # -Base Address for Display: 0x10010000 ($sp)
 #
-# Which milestoneshave beenreached in this submission?
+# Which milestones have beenreached in this submission?
 # (See the assignment handout for descriptions of the milestones)
-# -Milestone 1
+# -Milestone 3
 #
 # Which approved features have been implementedfor milestone 3?
 # (See the assignment handout for the list of additional features)
-# 1. (fillin the feature, if any)
-# 2. (fill in the feature, if any)
-# 3. (fill in the feature, if any)
-# ... (add more if necessary)## Link to video demonstration for final submission:
+# 1. Shoot obstacles: players can shoot obstacles by pressing "space".
+# 2. Scoring system: score system based on near misses, shoot on obstacles, obstacles crash or move out of screen. 
+# 3. increase in difficulty as game progresses: As score increases, the speed of obstacles will increase and there will be more and more obstacles on the screen.
+# ... (add more if necessary)
+## Link to video demonstration for final submission:
 # -(insert YouTube / MyMedia / other URL here). Make sure we can view it!
 #
 # Are you OKwith us sharing the video with people outside course staff?# -yes / no/ yes, and please share this project githublink as well!
@@ -63,7 +64,7 @@ obst3NumPixel: .word 94,24,0
 
 spaceshipPos: .word -10,63
 spaceshipMov: .word 1,0
-spaceshipHitBoxBd: .word 6,2,2,2 #left top bottom right
+spaceshipHitBoxBd: .word 5,3,3,2 #left top bottom right
 obst1Mov: .word -2,2
 obst2Mov: .word -1,0
 obst3Mov: .word 2,0
@@ -71,19 +72,38 @@ obst1Area: .word 13,7
 obst2Area: .word 16,14
 obst3Area: .word 19,12
 
+HeartColor: .word 0xff7c7c
+HeartContainerPixel: .word 1,0,2,0,4,0,5,0,0,1,3,1,6,1,0,2,6,2,1,3,5,3,2,4,4,4,3,5
+HeartContainerPos: .word 4,121
+HeartContainerNumPixel:.word 14,0
+
+HeartPixel:.word 1,1,2,1,4,1,5,1,1,2,2,2,3,2,4,2,5,2,2,3,3,3,4,3,3,4
+HeartNumPixel:.word 13,0
+
+StartInfoPos: .word 86,60
+ReStartInfoPos: .word 94,60
 GameOverLoc: .word 65,25
-ScorePos: .word 200,121
+ScorePos: .word 188,121
+ScorePointPos: .word 212,121
 obstacle1: .word	0:56 	#coordx,cordy,movx,movy,HP,move_cd,alive ufo
 obstacle2: .word	0:56 	#coordx,cordy,movx,movy,HP,move_cd,alive planet
 obstacle3: .word	0:56 	#coordx,cordy,movx,movy,HP,move_cd,alive alien
+bullet: .word 0: 72 #coordx,coordy,exist
 currScore: .word 0
-prevScore: .word 0
-shieldTime: .word 20
+prevScore: .word 99999999
+shieldTime: .word 100
+shootTime: .word 0
 hasShield: .byte 1
-Timer: .word 10
-spaceshipHp: .word 3
-hitboxDamage: .word 1
-bulletDamage: .word 1
+Timer: .word 50
+spaceshipHp: .word 10
+ScoreReachesMax: .word 0
+scroll_screen_speed: .word 1
+RestartStatus: .word 0
+Hpchanged: .word 1
+.eqv hitboxDamage 1
+.eqv bulletDamage 1
+.eqv Max_Bullets 24
+.eqv Max_Hp 10
 .eqv displayAddress 0x10010000
 .eqv width 255
 .eqv height 127
@@ -93,13 +113,13 @@ bulletDamage: .word 1
 .eqv spaceshipHeight 19
 .eqv spaceshipWidth 21
 .eqv GameOverColor 0x0000ab
-.eqv ScoreColor 0xffffff
+.eqv UIColor 0xffffff
 .eqv Max_Obstacles 8
 .eqv Num_Obstacle_Type 3
 .eqv Obstacle_Appear_Buffer 20
 .eqv obst1Hp 1
-.eqv obst2Hp 1
-.eqv obst3Hp 1
+.eqv obst2Hp 4
+.eqv obst3Hp 2
 .eqv obst1movecd 0
 .eqv obst2movecd 4
 .eqv obst3movecd 1
@@ -107,18 +127,34 @@ bulletDamage: .word 1
 .eqv obst1Width 13
 .eqv obst2Height 14
 .eqv obst2Width 16
-.eqv obst3Height 7
-.eqv obst3Width 13
-.eqv scroll_screeen_speed 1
+.eqv obst3Height 12
+.eqv obst3Width 19
+.eqv UIheight 9
+.eqv newEnemyTime 60
+.eqv shootCD 25
+.eqv spaceshipBulletColor 0xfffbd6
+.eqv spaceshipBulletSpeed 1
+.eqv Max_Score 99999999
 .text
 .globl main
 main:
-#	jal clear_screen
+	jal clear_screen
 restart:
         jal initialize
-	jal AddNewObstacle
-	jal AddNewObstacle
+	jal DrawUI
+	jal DrawTittle
+	jal DrawScorePoint
 	jal StartAnimation
+	jal DrawStartInfo
+start:
+	li $t9, 0xffff0000
+	lw $t8, 0($t9)
+	bne $t8,1,start
+	lw $t2, 4($t9)
+	li $a3, 0x000000
+	jal DrawStartInfo
+	li $a2, 0x000000
+	jal DrawTittle
 	jal DrawObstacles
 Game:
 	sw $zero, spaceshipMov
@@ -130,30 +166,38 @@ keyevent_end:
 	li $v0, 32
 	li $a0, 40 #sleep for 40
 	syscall
-	jal CheckCollisionsObstacles
+	lw $zero, Hpchanged
+	jal EraseBullets
 	jal EraseObstacles
 	jal EraseSpaceship
 	jal MoveSpaceship
 	jal MoveObstacle1
 	jal MoveObstacle2
 	jal MoveObstacle3
+	jal MoveBullets
+	jal CheckCollisionsObstacles
+	jal DrawBullets
 	jal DrawObstacles
 	jal DrawSpaceship
 	lw $s6, Timer
 	subi $s6,$s6,1
 	sw $s6,Timer
 	bnez $s6,obstacle_increased
-	li $s6,10
+	li $s6,newEnemyTime
 	sw $s6,Timer
 	jal AddNewObstacle
 obstacle_increased:
-	jal drawscore
+	jal DrawHeart
+	jal DrawScorePoint
+	jal UpdateLevel
 	lw $t0, spaceshipHp
 	beqz $t0, Gameend
       	j Game
 Gameend:
 	li $a2, GameOverColor
 	jal DrawGameOver
+	li $a3, UIColor
+	jal DrawRestartInfo
 restart_detect:
 	li $t9, 0xffff0000
 	lw $t8, 0($t9)
@@ -172,16 +216,24 @@ prog_end:	# Jump here if there's an exception.
 initialize:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
-	li $t0, 10
+	sw $zero, ScoreReachesMax
+	sw $zero, RestartStatus
+	li $t0,1
+	sw $t0,scroll_screen_speed
+	sw $zero, shootTime
+	li $t0, newEnemyTime
 	sw $t0, Timer
 	li $t0, intX
 	sw $t0, spaceshipPos
 	li $t0, intY
 	sw $t0, spaceshipPos+4
-	la $s0, currScore
-	sw $zero, 0($s0)
-	li $t0, 3
+	sw $zero, currScore
+	li $t0, Max_Score
+	sw $t0, prevScore
+	li $t0, Max_Hp
 	sw $t0, spaceshipHp
+	li $t0,1000
+	sw $t0,shieldTime
 	la $a0, obstacle1
 	li $t0, Max_Obstacles
 	li $t1, Num_Obstacle_Type
@@ -191,6 +243,15 @@ clear_obstacles:
 	subi $t0,$t0,1
 	addi $a0, $a0,28
 	bnez $t0, clear_obstacles
+	la $t0, bullet
+	li $t1, Max_Bullets
+clear_bullet:
+	sw $zero, 8($t0)
+	addi $t0, $t0,12
+	subi $t1, $t1,1
+	bnez $t1, clear_bullet
+	jal AddNewObstacle
+	jal AddNewObstacle
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
       	jr $ra
@@ -212,10 +273,18 @@ erase:
 clear_curr_draws:	
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
+	li $t0, 1
+	sw $t0,RestartStatus
 	jal EraseObstacles
 	jal EraseSpaceship
 	li $a2, 0x000000
 	jal DrawGameOver
+	jal EraseUI
+	sw $zero, spaceshipHp
+	jal DrawHeart
+	li $a0, 0x000000
+	jal DrawRestartInfo
+	jal EraseBullets
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
       	jr $ra
@@ -228,13 +297,11 @@ keypress_happened:
 	beq $t2, 0x61, respond_to_a
 	beq $t2, 0x73, respond_to_s
 	beq $t2, 0x64, respond_to_d
-	beq $t2, 0x1b, respond_to_esc
+	beq $t2, 0x20, respond_to_space
 	j respond_end
 respond_to_p:
 	jal clear_curr_draws
 	j restart
-respond_to_esc:
-	j Gameend
 respond_to_w:
 	lw $t0, spaceshipPos+4
 	li $t1, -1
@@ -252,6 +319,7 @@ respond_to_s:
 	li $t1, 1
 	li $t2,height
 	subi $t2, $t2,spaceshipHeight
+	subi $t2, $t2, UIheight
 	bgt $t0, $t2, respond_end
 	sw $t1, spaceshipMov+4 
 	j respond_end
@@ -264,9 +332,122 @@ respond_to_d:
 	bgt $t0, $t2, respond_end
 	sw $t1, spaceshipMov
 	j respond_end
+respond_to_space: #shoot
+	lw $t0, shootTime
+	bnez $t0, respond_end #if shootcd isn't pass, skip add new bullet
+	li $t0, shootCD
+	sw $t0, shootTime	
+	la $a0, bullet
+	lw $a1, spaceshipPos
+	addi $a1,$a1,17
+	lw $a2, spaceshipPos+4
+	addi $a2,$a2,4
+	jal AddNewBullet
+	addi $a2,$a2,10
+	jal AddNewBullet
+	jal DrawBullets	
 respond_end:
 	j keyevent_end
 	
+AddNewBullet:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	move $t0, $a0
+	li $t1, Max_Bullets
+find_empty_bullet:
+	lw $t2, 8($t0) #get exist of curr bullet
+	beqz $t2, find_empty_bullet_space # if empty, create random obst
+	addi $t0, $t0, 12 # check next obst space
+	subi $t1,$t1,1 #count--  
+	beqz $t1, add_new_bullet_end #not found empty space, end adding
+	j find_empty_bullet #keep finding
+find_empty_bullet_space:
+	sw $a1, 0($t0) #write coord x
+	sw $a2, 4($t0)#write coord y
+	li $t1, 1
+	sw $t0, 8($t0)
+add_new_bullet_end:
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+      	jr $ra
+
+EraseBullets:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	la $s0, bullet
+	li $s1, Max_Bullets
+	li $s2, 0x000000
+erase_bullet_loop:
+	lw $t0, 8($s0) #get exist of curr bullet
+	beqz $t0, skip_erase_bullet # if empty, skip draw
+	lw $a0, 0($s0)
+	lw $a1, 4($s0)
+	jal CoordToAddress
+	sw $s2, 0($v0)
+	lw $t0, RestartStatus
+	beqz $t0, skip_erase_bullet
+	addi $v0,$v0,4
+	sw $s2, 0($v0)
+	addi $v0,$v0,4
+	sw $s2, 0($v0)
+skip_erase_bullet:
+	addi $s0, $s0, 12 # check next obst space
+	subi $s1,$s1,1 #count--  
+	bgtz $s1, erase_bullet_loop 
+erase_bullet_end:
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+      	jr $ra	
+
+DrawBullets:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	la $s0, bullet
+	li $s1, Max_Bullets
+	li $s2,spaceshipBulletColor
+draw_bullet_loop:
+	lw $t0, 8($s0) #get exist of curr bullet
+	beqz $t0, skip_draw_bullet # if empty, skip draw
+	lw $a0, 0($s0)
+	li $t0, width
+	subi $t0,$t0,1
+	bge $a0,$t0, skip_draw_bullet
+	lw $a1, 4($s0)
+	jal CoordToAddress
+	addi $v0,$v0,8
+	sw $s2, 0($v0)
+skip_draw_bullet:
+	addi $s0, $s0, 12 # check next obst space
+	subi $s1,$s1,1 #count--  
+	bgtz $s1, draw_bullet_loop 
+draw_bullet_end:
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+      	jr $ra	
+
+MoveBullets:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	la $s0, bullet
+	li $s1, Max_Bullets
+move_bullet_loop:
+	lw $t0, 8($s0) #get exist of curr bullet
+	beqz $t0, skip_move_bullet # if empty, skip draw
+	lw $t0, 0($s0) # coord x
+	addi $t0, $t0, spaceshipBulletSpeed
+	sw $t0, 0($s0) # update coord x
+	ble $t0, width, skip_move_bullet  #if bullet fly out of screen, remove bullet
+	sw $zero, 8($s0)
+skip_move_bullet:
+	addi $s0, $s0, 12 # check next obst space
+	subi $s1,$s1,1 #count--  
+	bgtz $s1, move_bullet_loop 
+move_bullet_end:
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+      	jr $ra	
+
+
 # This function add a new random obstacle to the obstacles array. It go through the obstacle array to find an empty obst and cover it with new obstacle created with random generator.
 # If no empty space found in obst array, it does nothing and return
 AddNewObstacle:
@@ -317,7 +498,8 @@ AddNewObstacle1:
 	beqz $v0,AddNewObstacle1_end
 	move $t0,$v1
 	li $t1, height
-	subi $t1, $t1,obst1Height # max_y obst can reach
+	subi $t1, $t1,obst1Height
+	subi $t1,$t1,UIheight # max_y obst can reach
 	li $v0, 42         # Service 42, random int range
 	li $a0, 0          # Select random generator 0
 	move $a1, $t1     # Select upper bound of random number
@@ -352,7 +534,8 @@ AddNewObstacle2:
 	beqz $v0,AddNewObstacle2_end
 	move $t0,$v1
 	li $t1, height
-	subi $t1, $t1,obst2Height # max_y obst can reach
+	subi $t1, $t1,obst2Height 
+	subi $t1,$t1,UIheight # max_y obst can reach
 	li $v0, 42         # Service 42, random int range
 	li $a0, 0          # Select random generator 0
 	move $a1, $t1     # Select upper bound of random number
@@ -380,6 +563,7 @@ AddNewObstacle3:
 	move $t0,$v1
 	li $t1, height
 	subi $t1, $t1,obst3Height # max_y obst can reach
+	subi $t1,$t1,UIheight
 	li $v0, 42         # Service 42, random int range
 	li $a0, 0          # Select random generator 0
 	move $a1, $t1     # Select upper bound of random number
@@ -424,6 +608,11 @@ MoveSpaceship:
 	subi $t0, $t0,1
 	sw $t0, shieldTime
 shield_updated:
+	lw $t0, shootTime
+	beqz $t0, shootTime_updated
+	subi $t0, $t0,1
+	sw $t0, shootTime
+shootTime_updated:
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
       	jr $ra
@@ -432,6 +621,8 @@ EraseSpaceship:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
 	jal EraseShield
+	lw $t0, RestartStatus
+	bnez $t0, erase_spaceship
 	lw $t0, spaceshipMov
 	bnez $t0, erase_spaceship
 	lw $t0, spaceshipMov +4
@@ -464,6 +655,8 @@ DrawSpaceship:
 EraseShield:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
+	lw $t0, RestartStatus
+	bnez $t0, erase_shield
 	lw $s0, shieldTime
 	li $t0,1
 	beq $t0,$s0, erase_shield
@@ -531,7 +724,10 @@ draw_current_color:
 	lw $a1,4($t6)
 	add $a1,$a1,$s1
 	bltz $a1, skip_draw
-	bgt $a1, height,skip_draw
+	li $t0, height
+	subi $t0,$t0,UIheight
+	subi $t0,$t0,1
+	bgt $a1, $t0,skip_draw
 	jal CoordToAddress
 	sw $t3, 0($v0) #draw this pixel
 skip_draw:
@@ -561,7 +757,10 @@ erase_current_color:
 	lw $a1,4($t6)
 	add $a1,$a1,$s1
 	bltz $a1, skip_erase
-	bgt $a1, height,skip_erase
+	li $t0, height
+	subi $t0,$t0,UIheight
+	subi $t0,$t0,1
+	bgt $a1, $t0,skip_erase
 	jal CoordToAddress
 	sw $t3, 0($v0) #erase this pixel
 skip_erase:
@@ -610,7 +809,10 @@ check_collisions_loop:
 	jal CheckCollisionSToO
 	bnez $v0, collison_with_spaceship
 	##space for check collisions with bullets
-	
+	move $a0, $s7
+	move $a1, $s4
+	jal CheckCollisionOToB
+	bnez $v0, collision_with_bullet	
 	j skip_check_collision # if no collison found, move to next obst
 collison_with_spaceship:
 	# if this obst has collision with spaceship, reduce spaceship hp by hit box demage, and reduce the obst1's hp to 0
@@ -621,20 +823,23 @@ collison_with_spaceship:
 	sw $t0, shieldTime
 	j check_shields_end
 shield_broken:
-	sub $t0, $t0, $t1
+	li $t0, 1
+	sw $t0, Hpchanged
+	lw $t0, spaceshipHp
+	subi $t0, $t0, hitboxDamage
 	sw $t0, spaceshipHp
 check_shields_end:
 	sw $zero, 16($s7) # reduce this obst's hp to 0
-	lw $t0, spaceshipHp
-	lw $t1, hitboxDamage
 	j skip_check_collision
 collision_with_bullet:
 	# if this obst has collision with bullet, reduce obst hp by bullet damage and remove that bullet 
 	lw $t0, 16($s7) # hp
-	lw $t1, bulletDamage
-	sub  $t0, $t0, $t1 #reduce obst hp by bullet damage
+	subi $t0, $t0, bulletDamage #reduce obst hp by bullet damage
 	sw $t0, 16($s7) # write updated hp to this obst's hp
-	# space for remove the bullet
+	# increase the score
+	li $a0,bulletDamage
+	jal ChangeScore
+	addi $t1,$t1,1
 skip_check_collision:
 	subi $s6,$s6,1 #count for num of curr type obstacles checked
 	addi $s7, $s7,28 #next obstacle
@@ -660,28 +865,82 @@ CheckCollisionSToO:
 	# if  coord x o < coord xs + hitboxbd r -width o, no collision
 	sub $t5, $t0,$t3
 	add $t5, $t5, $t1
+	beq $t2, $t5, near_miss
 	blt $t2,$t5,check_collision_S_to_O_end
 	# if coord x o > coord xs+width s - hitboxbd l, no collision
 	lw $t1, spaceshipHitBoxBd+ 12 #hitbox border left of spaceship
 	addi $t5, $t0, spaceshipWidth
 	sub $t5,$t5,$t1
+	beq $t2, $t5, near_miss
 	bgt $t2, $t5, check_collision_S_to_O_end
 	# if coord y o < coord y s + hitboxbd t - height o, no collision
 	lw $t0, spaceshipPos +4 # coord y of spaceship
 	lw $t1, spaceshipHitBoxBd +4  #hitbox border top of spaceship
 	lw $t2, 4($a0) #coord y of obst
-	lw $t3, 4($a0) #height of obst
+	lw $t3, 4($a1) #height of obst
 	add $t5,$t0,$t1
 	sub $t5,$t5, $t3
+	beq $t2, $t5, near_miss
 	blt $t2, $t5, check_collision_S_to_O_end
 	# if coord y o > coord y s - hitboxbd b + height s, no collision
 	lw $t1, spaceshipHitBoxBd+ 8 #hitbox border bottom of spaceship
 	addi $t5, $t0, spaceshipHeight
 	sub $t5,$t5,$t1
+	beq $t2, $t5, near_miss
 	bgt $t2, $t5, check_collision_S_to_O_end
 	#find collision, set result to 1
 	li $v0,1
+	j check_collision_S_to_O_end
+near_miss: #if obst and spaceship are very close, increasing score
+	li $a0,1
+	jal ChangeScore
 check_collision_S_to_O_end:
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+      	jr $ra
+
+
+#This function checks whether there is a bullet in an obst's hit box.
+CheckCollisionOToB:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	la $t0, bullet
+	li $t1, Max_Bullets
+	li $v0,0
+check_bullet_loop:
+	lw $t2, 8($t0)
+	beqz $t2, skip_check_bullet
+	lw $t2, 4($t0)
+	lw $t3, 4($a0) #coord y of onst
+	lw $t4, 4($a1) # height of obst
+	blt $t2,$t3, skip_check_bullet
+	add $t3,$t4,$t3
+	bgt $t2,$t3, skip_check_bullet
+	lw $t2, 0($t0)
+	lw $t3, 0($a0) #coord x of onst
+	lw $t4, 0($a1) # weight of obst
+	blt $t2,$t3,skip_check_bullet
+	add $t3,$t3,$t4
+	bgt $t2,$t3,skip_check_bullet
+	#erase current bullet if not exceed the left border
+	sw $zero, 8($t0)
+	lw $a0, 0($t0)
+	lw $a1, 4($t0)
+	bgt $a0, width,erase_collapsed_bullet
+	jal CoordToAddress
+	sw $zero, 0($v0)
+	lw $a0, 0($t0)
+	addi $a0, $a0,1
+	bgt $a0, width,erase_collapsed_bullet
+	sw $zero, 4($v0)
+erase_collapsed_bullet:
+	li $v0,1
+	j check_collision_O_to_B_end
+skip_check_bullet:
+	addi $t0, $t0,12
+	subi $t1,$t1,1
+	bnez $t1,check_bullet_loop
+check_collision_O_to_B_end:
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
       	jr $ra
@@ -694,7 +953,9 @@ MoveObstacle1:
 move_obstacle1_loop:
 	li $t3, height
 	li $t2, obst1Height
-	sub $t2, $t3, $t2 #max coord y of obst1
+	sub $t2, $t3, $t2
+	sub $t2, $t2, UIheight
+	addi $t2,$t2,1 #max coord y of obst1
 	lw $t0, obst1Mov + 4
 	subi $t2,$t2,1
 	sub $t2,$t2,$t0
@@ -703,7 +964,7 @@ move_obstacle1_loop:
 	lw $t4, 24($s7) #is alive of obst1
 	beqz $t4, skip_obst1
 	lw $t4, 16($s7) # hp of obst1
-	beqz $t4, remove_obst1
+	blez $t4, remove_obst1
 	lw $t4, 20($s7) #movecd
 	bgtz $t4, skip_move_obst1
 	li $t4, obst1movecd
@@ -711,17 +972,18 @@ move_obstacle1_loop:
 	lw $t4,4($s7) #coord y of obst 1
 	lw $t5,12($s7) # mov y
 	li $t6,0
-	bgt $t4,$t0, obst1_dirct_change1 #if coordy<-0, change mox y to 1
+	bge $t4,$t0, obst1_dirct_change1 #if coordy<-0, change mox y to 1
 	lw $t5, obst1Mov+4
 	lw $t6, obst1Mov
 	j obst1_dirct_changed
 obst1_dirct_change1: #if coordy>0
-	blt $t4, $t2, obst1_dirct_changed
+	ble $t4, $t2, obst1_dirct_changed
 	lw $t5, obst1Mov+4
 	sub $t5, $zero, $t5
 	lw $t6, obst1Mov
 obst1_dirct_changed:
-	subi $t6, $t6, scroll_screeen_speed
+	lw $t3,scroll_screen_speed
+	sub $t6, $t6, $t3
 	sw $t6, 8($s7) #write updated movx value to movx
 	sw $t5, 12($s7) #write updated movy value to movy	
 	lw $t4, 4($s7) #coord y
@@ -736,6 +998,14 @@ remove_obst1:
 	move $a0,$s7
 	jal RemoveObst
 	jal AddNewObstacle
+	# when a obst removed, increase score by its hp * screen rolling speed
+	li $t4, obst1Hp
+	lw $t5, scroll_screen_speed
+	addi $t5,$t5,1
+	mul $t4, $t4,$t5
+	move $a0,$t4
+	mul $a0,$a0,4
+	jal ChangeScore
 	j skip_obst1
 skip_move_obst1:
 	lw $t4, 20($s7) #movecd
@@ -759,7 +1029,8 @@ MoveObstacle2:
 move_obstacle2_loop:
 	li $t3, height
 	li $t2, obst2Height
-	sub $t2, $t3, $t2 #max coord y of obst1
+	sub $t2, $t3, $t2 
+	subi $t2,$t2,UIheight#max coord y of obst1
 	lw $t0, obst2Mov + 4
 	subi $t2,$t2,1
 	sub $t2,$t2,$t0
@@ -768,7 +1039,7 @@ move_obstacle2_loop:
 	lw $t4, 24($s7) #is alive of obst1
 	beqz $t4, skip_obst2
 	lw $t4, 16($s7) # hp of obst1
-	beqz $t4, remove_obst2
+	blez $t4, remove_obst2
 	lw $t4, 20($s7) #movecd
 	bgtz $t4, skip_move_obst2
 	li $t4, obst2movecd
@@ -780,7 +1051,8 @@ move_obstacle2_loop:
 	lw $t5, 8($s7)
 	lw $t4, 0($s7) #coord x
 	add $t4, $t4,$t5 
-	subi $t4, $t4, scroll_screeen_speed
+	lw $t5,scroll_screen_speed
+	sub $t4, $t4, $t5
 	sw $t4, 0($s7) #update coord x
 	# if obst go out of screen, remove and create new one
 	bge $t4,$t3, skip_move_obst2
@@ -788,6 +1060,13 @@ remove_obst2:
 	move $a0,$s7
 	jal RemoveObst
 	jal AddNewObstacle
+	# when a obst removed, increase score by its hp * screen rolling speed
+	li $t4, obst2Hp
+	lw $t5, scroll_screen_speed
+	addi $t5,$t5,1
+	mul $t4, $t4,$t5
+	move $a0,$t4
+	jal ChangeScore
 	j skip_obst2
 skip_move_obst2:
 	lw $t4, 20($s7) #movecd
@@ -808,18 +1087,12 @@ MoveObstacle3:
 	la $s7, obstacle3
 	li $s6, Max_Obstacles
 move_obstacle3_loop:
-	li $t3, height
-	li $t2, obst3Height
-	sub $t2, $t3, $t2 #max coord y of obst1
-	lw $t0, obst3Mov + 4
-	subi $t2,$t2,1
-	sub $t2,$t2,$t0
 	li $t3, obst3Width
 	sub $t3, $zero,$t3 #mmin coord x of obst1
 	lw $t4, 24($s7) #is alive of obst1
 	beqz $t4, skip_obst3
 	lw $t4,16($s7) # hp of obst1
-	beqz $t4, remove_obst3
+	blez $t4, remove_obst3
 	lw $t4, 20($s7) #movecd
 	bgtz $t4, skip_move_obst3
 	li $t4, obst3movecd
@@ -838,7 +1111,8 @@ obst3_dir_updated:
 	lw $t5, 8($s7)
 	lw $t4, 0($s7) #coord x
 	add $t4, $t4,$t5 
-	subi $t4, $t4, scroll_screeen_speed
+	lw $t5, scroll_screen_speed
+	sub $t4, $t4, $t5
 	sw $t4, 0($s7) #update coord x
 	# if obst go out of screen, remove and create new one
 	bge $t4,$t3, skip_move_obst3
@@ -846,6 +1120,13 @@ remove_obst3:
 	move $a0,$s7
 	jal RemoveObst
 	jal AddNewObstacle
+	# when a obst removed, increase score by its hp * screen rolling speed
+	li $t4, obst3Hp
+	lw $t5, scroll_screen_speed
+	addi $t5,$t5,1
+	mul $t4, $t4,$t5
+	move $a0,$t4
+	jal ChangeScore
 	j skip_obst3
 skip_move_obst3:
 	lw $t4, 20($s7) #movecd
@@ -941,8 +1222,13 @@ EraseObsts:
 erase_obst_loop:
 	lw $t0, 24($s5) #alive
 	beqz $t0, skip_erase_obst
+	lw $t0, RestartStatus
+	bnez $t0, erase_obst
+	lw $t0, 16($s5) #hp
+	beqz $t0, erase_obst
 	lw $t0, 20($s5) #movecd
 	bgtz $t0, skip_erase_obst
+erase_obst:
 	lw $s0, 0($s5)
 	lw $s1, 4($s5)
 	move $a1, $s2
@@ -956,7 +1242,7 @@ skip_erase_obst:
 	addi $sp, $sp, 4
 	jr $ra
 
-
+## Big texts
 
 DrawSquare:
 	addi $sp, $sp, -4
@@ -1026,6 +1312,55 @@ drawG:
 	addi $a1,$s1, 28
 	jal DrawSquare
 	addi $a0,$s0, 18
+	addi $a1,$s1, 28
+	jal DrawSquare
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+drawD:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	lw $t0,GameOverLoc
+	lw $t1,GameOverLoc+4
+	move $s0,$a0 #start coord of G
+	move $s1,$a1
+	add $s0,$s0,$t0
+	add $s1,$s1,$t1
+	addi $a0,$s0, 0
+	addi $a1,$s1, 0
+	jal DrawSquare
+	addi $a0,$s0, 6
+	addi $a1,$s1, 0
+	jal DrawSquare
+	addi $a0,$s0, 12
+	addi $a1,$s1, 0
+	jal DrawSquare
+	addi $a0,$s0, 0
+	addi $a1,$s1, 7
+	jal DrawSquare
+	addi $a0,$s0, 18
+	addi $a1,$s1, 7
+	jal DrawSquare
+	addi $a0,$s0, 0
+	addi $a1,$s1, 14
+	jal DrawSquare
+	addi $a0,$s0, 18
+	addi $a1,$s1, 14
+	jal DrawSquare
+	addi $a0,$s0, 0
+	addi $a1,$s1, 21
+	jal DrawSquare
+	addi $a0,$s0, 18
+	addi $a1,$s1, 21
+	jal DrawSquare
+	addi $a0,$s0, 0
+	addi $a1,$s1, 28
+	jal DrawSquare
+	addi $a0,$s0, 6
+	addi $a1,$s1, 28
+	jal DrawSquare
+	addi $a0,$s0, 12
 	addi $a1,$s1, 28
 	jal DrawSquare
 	lw $ra, 0($sp)
@@ -1350,8 +1685,6 @@ drawE:
 	addi $sp, $sp, 4
 	jr $ra
 
-
-
 DrawGameOver:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -1383,34 +1716,235 @@ DrawGameOver:
 	addi $sp, $sp, 4
 	jr $ra
 
-drawscore:
+DrawTittle:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
 	li $a0, 0
 	li $a1, 0
-	jal drawscoreS
+	jal drawG
+	li $a0, 36
+	li $a1, 0
+	jal drawA
+	li $a0, 66
+	li $a1, 0
+	jal drawM
+	li $a0, 102
+	li $a1, 0
+	jal drawE
+	li $a0, 0
+	li $a1, 42
+	jal drawD
+	li $a0, 30
+	li $a1, 42
+	jal drawE
+	li $a0, 60
+	li $a1, 42
+	jal drawM
+	li $a0, 96
+	li $a1, 42
+	jal drawO
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+
+####smal texts
+DrawScore:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	lw $s2, ScorePos
+	lw $s3, ScorePos +4
+	li $a0, 0
+	li $a1, 0
+	jal DrawSmallS
 	li $a0, 4
 	li $a1, 0
-	jal drawscoreC
+	jal DrawSmallC
 	li $a0, 8
 	li $a1, 0
-	jal drawscoreO
+	jal DrawSmallO
 	li $a0, 12
 	li $a1, 0
-	jal drawscoreR
+	jal DrawSmallR
 	li $a0, 16
 	li $a1, 0
-	jal drawscoreE
+	jal DrawSmallE
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+DrawStartInfo:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	lw $s2, StartInfoPos
+	lw $s3, StartInfoPos +4
+	li $a0, 0
+	li $a1, 0
+	jal DrawSmallP
+	li $a0, 4
+	li $a1, 0
+	jal DrawSmallE
+	li $a0, 8
+	li $a1, 0
+	jal DrawSmallS
+	li $a0, 12
+	li $a1, 0
+	jal DrawSmallS
+	li $a0, 20
+	li $a1, 0
+	jal DrawSmallA
+	li $a0, 24
+	li $a1, 0
+	jal DrawSmallN
+	li $a0, 28
+	li $a1, 0
+	jal DrawSmallY
+	li $a0, 36
+	li $a1, 0
+	jal DrawSmallK
+	li $a0, 40
+	li $a1, 0
+	jal DrawSmallE
+	li $a0, 44
+	li $a1, 0
+	jal DrawSmallY
+	li $a0, 52
+	li $a1, 0
+	jal DrawSmallT
+	li $a0, 56
+	li $a1, 0
+	jal DrawSmallO
+	li $a0, 64
+	li $a1, 0
+	jal DrawSmallS
+	li $a0, 68
+	li $a1, 0
+	jal DrawSmallT
+	li $a0, 72
+	li $a1, 0
+	jal DrawSmallA
+	li $a0, 76
+	li $a1, 0
+	jal DrawSmallR
+	li $a0, 80
+	li $a1, 0
+	jal DrawSmallT
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
 	jr $ra
 	
-drawscoreS:
+DrawRestartInfo:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
-	li $t0, ScoreColor
-	lw $t1, ScorePos
-	lw $t2,ScorePos+4
+	lw $s2, ReStartInfoPos
+	lw $s3, ReStartInfoPos +4
+	li $a0, 0
+	li $a1, 0
+	jal DrawSmallP
+	li $a0, 4
+	li $a1, 0
+	jal DrawSmallE
+	li $a0, 8
+	li $a1, 0
+	jal DrawSmallS
+	li $a0, 12
+	li $a1, 0
+	jal DrawSmallS
+	li $a0, 20
+	li $a1, 0
+	jal DrawSmallP
+	li $a0, 28
+	li $a1, 0
+	jal DrawSmallT
+	li $a0, 32
+	li $a1, 0
+	jal DrawSmallO
+	li $a0, 40
+	li $a1, 0
+	jal DrawSmallR
+	li $a0, 44
+	li $a1, 0
+	jal DrawSmallE
+	li $a0, 48
+	li $a1, 0
+	jal DrawSmallS
+	li $a0, 52
+	li $a1, 0
+	jal DrawSmallT
+	li $a0, 56
+	li $a1, 0
+	jal DrawSmallA
+	li $a0, 60
+	li $a1, 0
+	jal DrawSmallR
+	li $a0, 64
+	li $a1, 0
+	jal DrawSmallT
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+	
+DrawSmallA:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
+	move $s0, $a0
+	move $s1,$a1
+	add $s0,$s0,$t1
+	add $s1,$s1,$t2
+	addi $a0, $s0, 1
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+	
+
+DrawSmallS:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
 	move $s0, $a0
 	move $s1,$a1
 	add $s0,$s0,$t1
@@ -1447,12 +1981,12 @@ drawscoreS:
 	addi $sp, $sp, 4
 	jr $ra
 	
-drawscoreC:
+DrawSmallC:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
-	li $t0, ScoreColor
-	lw $t1, ScorePos
-	lw $t2,ScorePos+4
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
 	move $s0, $a0
 	move $s1,$a1
 	add $s0,$s0,$t1
@@ -1489,12 +2023,12 @@ drawscoreC:
 	addi $sp, $sp, 4
 	jr $ra
 	
-drawscoreO:
+DrawSmallO:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
-	li $t0, ScoreColor
-	lw $t1, ScorePos
-	lw $t2,ScorePos+4
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
 	move $s0, $a0
 	move $s1,$a1
 	add $s0,$s0,$t1
@@ -1535,12 +2069,12 @@ drawscoreO:
 	addi $sp, $sp, 4
 	jr $ra
 	
-drawscoreR:
+DrawSmallR:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
-	li $t0, ScoreColor
-	lw $t1, ScorePos
-	lw $t2,ScorePos+4
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
 	move $s0, $a0
 	move $s1,$a1
 	add $s0,$s0,$t1
@@ -1585,12 +2119,238 @@ drawscoreR:
 	addi $sp, $sp, 4
 	jr $ra
 
-drawscoreE:
+DrawSmallP:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
-	li $t0, ScoreColor
-	lw $t1, ScorePos
-	lw $t2,ScorePos+4
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
+	move $s0, $a0
+	move $s1,$a1
+	add $s0,$s0,$t1
+	add $s1,$s1,$t2
+	addi $a0, $s0, 0
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)		
+	addi $a0, $s0, 0
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 0
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 0
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+DrawSmallN:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
+	move $s0, $a0
+	move $s1,$a1
+	add $s0,$s0,$t1
+	add $s1,$s1,$t2
+	addi $a0, $s0, 0
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+DrawSmallY:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
+	move $s0, $a0
+	move $s1,$a1
+	add $s0,$s0,$t1
+	add $s1,$s1,$t2
+	addi $a0, $s0, 0
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+DrawSmallT:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
+	move $s0, $a0
+	move $s1,$a1
+	add $s0,$s0,$t1
+	add $s1,$s1,$t2
+	addi $a0, $s0, 0
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+DrawSmallK:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
+	move $s0, $a0
+	move $s1,$a1
+	add $s0,$s0,$t1
+	add $s1,$s1,$t2
+	addi $a0, $s0, 0
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+DrawSmallE:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
 	move $s0, $a0
 	move $s1,$a1
 	add $s0,$s0,$t1
@@ -1642,4 +2402,959 @@ drawscoreE:
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
 	jr $ra
+
+DrawSmall2:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
+	move $s0, $a0
+	move $s1,$a1
+	add $s0,$s0,$t1
+	add $s1,$s1,$t2
+	addi $a0, $s0, 0
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)		
+	addi $a0, $s0, 0
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 2
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 0
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+DrawSmall3:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
+	move $s0, $a0
+	move $s1,$a1
+	add $s0,$s0,$t1
+	add $s1,$s1,$t2
+	addi $a0, $s0, 0
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)		
+	addi $a0, $s0, 0
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 2
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 0
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+DrawSmall4:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
+	move $s0, $a0
+	move $s1,$a1
+	add $s0,$s0,$t1
+	add $s1,$s1,$t2
+	addi $a0, $s0, 0
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)		
+	addi $a0, $s0, 0
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 2
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 2
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
 	
+DrawSmall7:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
+	move $s0, $a0
+	move $s1,$a1
+	add $s0,$s0,$t1
+	add $s1,$s1,$t2
+	addi $a0, $s0, 0
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)		
+	addi $a0, $s0, 2
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 2
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+DrawSmall5:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
+	move $s0, $a0
+	move $s1,$a1
+	add $s0,$s0,$t1
+	add $s1,$s1,$t2
+	addi $a0, $s0, 0
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)		
+	addi $a0, $s0, 0
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 2
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 0
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+DrawSmall6:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
+	move $s0, $a0
+	move $s1,$a1
+	add $s0,$s0,$t1
+	add $s1,$s1,$t2
+	addi $a0, $s0, 0
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)		
+	addi $a0, $s0, 0
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 2
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 0
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+DrawSmall8:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
+	move $s0, $a0
+	move $s1,$a1
+	add $s0,$s0,$t1
+	add $s1,$s1,$t2
+	addi $a0, $s0, 0
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 2
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 0
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 2
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 0
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+DrawSmall9:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
+	move $s0, $a0
+	move $s1,$a1
+	add $s0,$s0,$t1
+	add $s1,$s1,$t2
+	addi $a0, $s0, 0
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 2
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 0
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 2
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 0
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+		
+DrawSmall0:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
+	move $s0, $a0
+	move $s1,$a1
+	add $s0,$s0,$t1
+	add $s1,$s1,$t2
+	addi $a0, $s0, 0
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)		
+	addi $a0, $s0, 2
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 2
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 2
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+DrawSmall1:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	move $t0, $a3
+	move $t1, $s2
+	move $t2, $s3
+	move $s0, $a0
+	move $s1,$a1
+	add $s0,$s0,$t1
+	add $s1,$s1,$t2
+	addi $a0, $s0, 1
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,0
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 0
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)		
+	addi $a0, $s0, 2
+	addi $a1,$s1,1
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 2
+	addi $a1,$s1,2
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)	
+	addi $a0, $s0, 2
+	addi $a1,$s1,3
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 1
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	addi $a0, $s0, 2
+	addi $a1,$s1,4
+	jal CoordToAddress
+	sw $t0,($v0)
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+############### UI, score, and other things
+
+DrawUI:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	li $a3, 0xffffff
+	li $a1, height
+	subi $a1, $a1,UIheight
+	li $a2, width
+	li $a0,0
+	jal DrawHorizLine
+	jal DrawScore
+	lw $a3, HeartColor
+	jal DrawHpContainers
+	jal DrawHeart
+	li $a3, 0xffffff
+	li $a2, GameOverColor
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+	
+EraseUI:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	li $a3, 0x000000
+	li $a1, height
+	subi $a1, $a1,UIheight
+	li $a2, width
+	li $a0,0
+	jal DrawHorizLine
+	jal DrawScore
+	jal DrawHpContainers
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+		
+DrawHorizLine:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)	
+	move $s0,$a0 #coord x
+	move $s1, $a1 #coord y start
+draw_horiz_line_loop:
+	move $a0,$s0
+	move $a1,$s1
+	jal CoordToAddress
+	sw $a3, ($v0)
+	subi $a2,$a2,1
+	addi $s0,$s0,1
+	bgez  $a2, draw_horiz_line_loop
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+DrawHpContainers:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)	
+	li $s3, Max_Hp
+	lw $s0, HeartContainerPos
+	lw $s1,HeartContainerPos+4
+	la $s4, HeartContainerPixel
+      	lw $s5, HeartContainerNumPixel
+      	move $s6, $a3
+draw_hp_container_loop:
+	move $t3,$s4
+	move $t4, $s5
+draw_one_heart_container:
+	lw $a0, 0($t3)
+	add $a0,$a0,$s0
+	lw $a1, 4($t3)
+	add $a1,$a1,$s1
+	jal CoordToAddress
+	sw $s6,($v0)
+	subi $t4,$t4,1
+	addi $t3,$t3, 8
+	bnez $t4,draw_one_heart_container
+	subi $s3,$s3,1
+	addi $s0,$s0,10
+	bgtz  $s3, draw_hp_container_loop
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+
+DrawHeart:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)	
+	lw $t0, Hpchanged
+	beqz $t0, draw_hp_end #if hp unchangee, skip draw
+	lw $s2, spaceshipHp
+	li $s3, Max_Hp
+	lw $s0, HeartContainerPos
+	lw $s1,HeartContainerPos+4
+	la $s4, HeartPixel 
+      	lw $s5, HeartNumPixel
+      	lw $s6, HeartColor
+draw_hp_loop:
+	bgtz  $s2, hp_erase
+	li $s6, 0x000000
+hp_erase:
+	move $t3,$s4
+	move $t4, $s5
+draw_one_heart:
+	lw $a0, 0($t3)
+	add $a0,$a0,$s0
+	lw $a1, 4($t3)
+	add $a1,$a1,$s1
+	jal CoordToAddress
+	sw $s6,($v0)
+	subi $t4,$t4,1
+	addi $t3,$t3, 8
+	bnez $t4,draw_one_heart
+	subi $s2,$s2,1
+	subi $s3,$s3,1
+	addi $s0,$s0,10
+	bgtz  $s3, draw_hp_loop
+draw_hp_end:
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+ChangeScore:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)	
+	lw $t0, currScore
+	# Save current score to previous score
+	add $t0,$t0,$a0 # change score
+	sw $t0, currScore
+	ble $t0,Max_Score, change_score_end
+	li $t0, Max_Score
+	sw $t0,currScore
+change_score_end:
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+UpdateLevel:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)	
+	li $t0,1 
+	sw $t0,scroll_screen_speed
+	lw $t0, currScore
+	bge $t0, 2000, level_4
+	bge $t0, 1000, level_3
+	bge $t0, 500, level_2
+	bge $t0, 100, level_1
+	j change_level_end
+level_1:
+	li $t0,2
+	sw $t0, scroll_screen_speed
+	j change_level_end
+level_2:
+	li $t0,3
+	sw $t0, scroll_screen_speed
+	j change_level_end
+level_3:
+	li $t0,4
+	sw $t0, scroll_screen_speed
+	j change_level_end
+level_4:
+	li $t0,5
+	sw $t0, scroll_screen_speed
+	j change_level_end
+change_level_end:
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+DrawScorePoint:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	lw $s2, ScorePointPos
+	lw $s3, ScorePointPos +4
+	lw $s4, currScore
+	lw $s5, prevScore
+	beq $s4,$s5, draw_score_point_end
+	div $t1, $s4, 10000000
+	div $t0, $s5, 10000000
+	beq $t0,$t1,skip_redraw_7th_digit
+	li $a3,0x000000
+	li $a1,0
+	li $a0,0
+	move $a2, $t0
+	jal DrawDigit
+	li $a3,UIColor
+	li $a1,0
+	li $a0,0
+	div $a2, $s4, 10000000
+	jal DrawDigit
+skip_redraw_7th_digit:
+	li $t0, 10000000
+	div $s4, $t0
+	mfhi $s4
+	div $s5, $t0
+	mfhi $s5
+	div $t1, $s4, 1000000
+	div $t0, $s5, 1000000
+	beq $t0,$t1,skip_redraw_6th_digit
+	li $a3,0x000000
+	move $a2, $t0
+	li $a1,0
+	li $a0,4
+	jal DrawDigit
+	li $a3,UIColor
+	div $a2, $s4, 1000000
+	move $a2,$t1
+	li $a1,0
+	li $a0,4
+	jal DrawDigit
+skip_redraw_6th_digit:
+	li $t0, 1000000
+	div $s4, $t0
+	mfhi $s4
+	div $s5, $t0
+	mfhi $s5
+	div $t1, $s4, 100000
+	div $t0, $s5, 100000
+	beq $t0,$t1,skip_redraw_5th_digit
+	li $a3,0x000000
+	move $a2, $t0
+	li $a1,0
+	li $a0,8
+	jal DrawDigit
+	li $a3,UIColor
+	div $a2, $s4, 100000
+	move $a2,$t1
+	li $a1,0
+	li $a0,8
+	jal DrawDigit
+skip_redraw_5th_digit:
+	li $t0, 100000
+	div $s4, $t0
+	mfhi $s4
+	div $s5, $t0
+	mfhi $s5
+	div $t1, $s4, 10000
+	div $t0, $s5, 10000
+	beq $t0,$t1,skip_redraw_4th_digit
+	li $a3,0x000000
+	move $a2, $t0
+	li $a1,0
+	li $a0,12
+	jal DrawDigit
+	li $a3,UIColor
+	div $a2, $s4, 10000
+	move $a2,$t1
+	li $a1,0
+	li $a0,12
+	jal DrawDigit
+skip_redraw_4th_digit:
+	li $t0, 10000
+	div $s4, $t0
+	mfhi $s4
+	div $s5, $t0
+	mfhi $s5
+	div $t1, $s4, 1000
+	div $t0, $s5, 1000
+	beq $t0,$t1,skip_redraw_3th_digit
+	li $a3,0x000000
+	move $a2, $t0
+	li $a1,0
+	li $a0,16
+	jal DrawDigit
+	li $a3,UIColor
+	div $a2, $s4, 1000
+	li $a1,0
+	li $a0,16
+	jal DrawDigit
+skip_redraw_3th_digit:
+	li $t0, 1000
+	div $s4, $t0
+	mfhi $s4
+	div $s5, $t0
+	mfhi $s5
+	div $t1, $s4, 100
+	div $t0, $s5, 100
+	beq $t0,$t1,skip_redraw_2th_digit
+	li $a3,0x000000
+	move $a2, $t0
+	li $a1,0
+	li $a0,20
+	jal DrawDigit
+	li $a3,UIColor
+	div $a2, $s4, 100
+	li $a1,0
+	li $a0,20
+	jal DrawDigit
+skip_redraw_2th_digit:
+	li $t0, 100
+	div $s4, $t0
+	mfhi $s4
+	div $s5, $t0
+	mfhi $s5
+	div $t1, $s4, 10
+	div $t0, $s5, 10
+	beq $t0,$t1,skip_redraw_1th_digit
+	li $a3,0x000000
+	move $a2, $t0
+	li $a1,0
+	li $a0,24
+	jal DrawDigit
+	li $a3,UIColor
+	div $a2, $s4, 10
+	li $a1,0
+	li $a0,24
+	jal DrawDigit
+skip_redraw_1th_digit:
+	li $t0, 10
+	div $s4, $t0
+	mfhi $s4
+	div $s5, $t0
+	mfhi $s5
+	div $t1, $s4, 1
+	div $t0, $s5, 1
+	beq $t0,$t1,draw_score_point_end
+	li $a3,0x000000
+	move $a2, $t0
+	li $a1,0
+	li $a0,28
+	jal DrawDigit
+	li $a3,UIColor
+	div $a2, $s4, 1
+	li $a1,0
+	li $a0,28
+	jal DrawDigit
+draw_score_point_end:
+	lw $t0, currScore
+	sw $t0, prevScore
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+
+DrawDigit:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	beq $a2, 0, draw_digit_0
+	beq $a2, 1, draw_digit_1
+	beq $a2, 2, draw_digit_2
+	beq $a2, 3, draw_digit_3
+	beq $a2, 4, draw_digit_4
+	beq $a2, 5, draw_digit_5
+	beq $a2, 6, draw_digit_6
+	beq $a2, 7, draw_digit_7
+	beq $a2, 8, draw_digit_8
+	beq $a2, 9, draw_digit_9
+draw_digit_0:
+	jal DrawSmall0
+	j draw_digit_end
+draw_digit_1:
+	jal DrawSmall1
+	j draw_digit_end
+draw_digit_2:
+	jal DrawSmall2
+	j draw_digit_end
+draw_digit_3:
+	jal DrawSmall3
+	j draw_digit_end
+draw_digit_4:
+	jal DrawSmall4
+	j draw_digit_end
+draw_digit_5:
+	jal DrawSmall5
+	j draw_digit_end
+draw_digit_6:
+	jal DrawSmall6
+	j draw_digit_end
+draw_digit_7:
+	jal DrawSmall7
+	j draw_digit_end
+draw_digit_8:
+	jal DrawSmall8
+	j draw_digit_end
+draw_digit_9:
+	jal DrawSmall9
+	j draw_digit_end
+draw_digit_end:
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
