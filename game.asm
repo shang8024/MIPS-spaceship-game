@@ -17,9 +17,9 @@
 #
 # Which approved features have been implementedfor milestone 3?
 # (See the assignment handout for the list of additional features)
-# 1. Shoot obstacles: players can shoot obstacles by pressing "space".
+# 1. Shoot obstacles: players can shoot obstacles by pressing "space", and player can see the bullets reloading at the bottom of the screen, and the first bullet sign wil turns red when spaceship is ready to shoot
 # 2. Scoring system: score system based on near misses, shoot on obstacles, obstacles crash or move out of screen. 
-# 3. increase in difficulty as game progresses: As score increases, the speed of obstacles will increase and there will be more and more obstacles on the screen.
+# 3. increase in difficulty as game progresses: As score increases, the speed of obstacles will increase and there will be more and more obstacles (of different obstacle types) on the screen.
 # ... (add more if necessary)
 ## Link to video demonstration for final submission:
 # -(insert YouTube / MyMedia / other URL here). Make sure we can view it!
@@ -27,7 +27,7 @@
 # Are you OKwith us sharing the video with people outside course staff?# -yes / no/ yes, and please share this project githublink as well!
 # yes
 # Any additional information that the TA needs to know:
-# -(write here, if any)
+# 
 ######################################################################
 .data
 MAP:	.word	0:32768
@@ -58,10 +58,21 @@ obst2Pink: .word 5,0,6,0,7,0,8,0,9,0,10,0,3,1,4,1,5,1,6,1,7,1,8,1,9,1,10,1,11,1,
 obst2NumPixel: .word 10,41,125,0
 
 obst3Color: .word 0xf5d1e4,0x594c53
-obst3Pink1: 3,0,4,0,5,0,8,0,9,0,10,0,18,0,17,1,16,1,15,1,12,1,11,1,7,1,6,1,5,1,4,1,3,1,2,1,1,2,2,2,3,2,4,2,5,2,13,2,14,2,0,3,1,3,2,3,3,3,4,3,5,3,6,3,0,4,1,4,4,4,5,4,6,4,0,5,1,5,2,5,3,5,4,5,5,5,6,5,7,5,0,6,1,6,2,6,3,6,4,6,5,6,6,6,8,6,17,6,18,6,1,7,4,7,5,7,6,7,9,7,10,7,11,7,12,7,14,7,15,7,16,7,1,8,2,8,3,8,4,8,5,8,6,8,12,8,13,8,2,9,3,9,4,9,5,9,6,9,7,9,17,9,18,9,4,10,5,10,6,10,8,10,14,10,15,10,16,10,9,11,10,11,11,11,12,11,13,11
-obst3Pink2: 6,2,7,2,8,3,17,3,9,4,10,4,11,4,12,4,13,4,14,4,15,4,16,4,16,6,15,6,14,6,13,6,11,8,10,9,9,9,8,9,2,4,3,4,2,7,3,7
+obst3Pink1: .word 3,0,4,0,5,0,8,0,9,0,10,0,18,0,17,1,16,1,15,1,12,1,11,1,7,1,6,1,5,1,4,1,3,1,2,1,1,2,2,2,3,2,4,2,5,2,13,2,14,2,0,3,1,3,2,3,3,3,4,3,5,3,6,3,0,4,1,4,4,4,5,4,6,4,0,5,1,5,2,5,3,5,4,5,5,5,6,5,7,5,0,6,1,6,2,6,3,6,4,6,5,6,6,6,8,6,17,6,18,6,1,7,4,7,5,7,6,7,9,7,10,7,11,7,12,7,14,7,15,7,16,7,1,8,2,8,3,8,4,8,5,8,6,8,12,8,13,8,2,9,3,9,4,9,5,9,6,9,7,9,17,9,18,9,4,10,5,10,6,10,8,10,14,10,15,10,16,10,9,11,10,11,11,11,12,11,13,11
+obst3Pink2: .word 6,2,7,2,8,3,17,3,9,4,10,4,11,4,12,4,13,4,14,4,15,4,16,4,16,6,15,6,14,6,13,6,11,8,10,9,9,9,8,9,2,4,3,4,2,7,3,7
 obst3NumPixel: .word 94,24,0
 
+addon1Color: .word 0xfff38b,0xffffff
+addon1Yellow: .word 2,0,3,0,1,1,4,1,0,2,5,2,0,3,5,3,1,4,4,4,2,5,3,5
+addon1White: .word 3,1,4,2
+addon1NumPixel: .word 12,2,0
+
+addon2Color: .word 0xbababa,0xffffff
+addon2Silver: .word 1,0,2,0,2,1,0,2,1,2,2,2,3,2,3,3,4,3,5,4,5,5
+addon2White: .word 2,3,3,4,4,5
+addon2NumPixel: .word 11,3,0
+
+addons: .word 0:15 #coordx, coordy,type
 spaceshipPos: .word -10,63
 spaceshipMov: .word 1,0
 spaceshipHitBoxBd: .word 5,3,3,2 #left top bottom right
@@ -80,29 +91,44 @@ HeartContainerNumPixel:.word 14,0
 HeartPixel:.word 1,1,2,1,4,1,5,1,1,2,2,2,3,2,4,2,5,2,2,3,3,3,4,3,3,4
 HeartNumPixel:.word 13,0
 
+starsColor:.word 0xaaaaaa,0x0000ab,0x776600,0x660099,0xe4faff
 StartInfoPos: .word 86,60
 ReStartInfoPos: .word 94,60
 GameOverLoc: .word 65,25
+AvailableBulletsPos: .word 115,121
 ScorePos: .word 188,121
 ScorePointPos: .word 212,121
 obstacle1: .word	0:56 	#coordx,cordy,movx,movy,HP,move_cd,alive ufo
 obstacle2: .word	0:56 	#coordx,cordy,movx,movy,HP,move_cd,alive planet
 obstacle3: .word	0:56 	#coordx,cordy,movx,movy,HP,move_cd,alive alien
-bullet: .word 0: 72 #coordx,coordy,exist
+bullet: .word 0: 90 #coordx,coordy,exist
 currScore: .word 0
 prevScore: .word 99999999
-shieldTime: .word 100
+shieldTime: .word 50
 shootTime: .word 0
 hasShield: .byte 1
+availableBullets: .word 20
 Timer: .word 50
 spaceshipHp: .word 10
 ScoreReachesMax: .word 0
 scroll_screen_speed: .word 1
 RestartStatus: .word 0
 Hpchanged: .word 1
-.eqv hitboxDamage 1
+obst1Hp: .word 1
+obst2Hp: .word 3
+obst3Hp: .word 1
+obst1movecd: .word 0
+obst2movecd: .word 3
+obst3movecd: .word 2
+hitboxDamage: .word 1
+curr_level: .word 0
+.eqv addonHeight 6
+.eqv addonWidth 6
+.eqv Num_Addon_Type 2
+.eqv Max_Addon 5
+.eqv hitboxinitDamage 1
 .eqv bulletDamage 1
-.eqv Max_Bullets 24
+.eqv Max_Bullets 30
 .eqv Max_Hp 10
 .eqv displayAddress 0x10010000
 .eqv width 255
@@ -117,12 +143,12 @@ Hpchanged: .word 1
 .eqv Max_Obstacles 8
 .eqv Num_Obstacle_Type 3
 .eqv Obstacle_Appear_Buffer 20
-.eqv obst1Hp 1
-.eqv obst2Hp 4
-.eqv obst3Hp 2
-.eqv obst1movecd 0
-.eqv obst2movecd 4
-.eqv obst3movecd 1
+.eqv obst1initHp 1
+.eqv obst2initHp 3
+.eqv obst3initHp 1
+.eqv obst1initmovecd 0
+.eqv obst2initmovecd 3
+.eqv obst3initmovecd 1
 .eqv obst1Height 7
 .eqv obst1Width 13
 .eqv obst2Height 14
@@ -131,7 +157,7 @@ Hpchanged: .word 1
 .eqv obst3Width 19
 .eqv UIheight 9
 .eqv newEnemyTime 60
-.eqv shootCD 25
+.eqv shootCD 8
 .eqv spaceshipBulletColor 0xfffbd6
 .eqv spaceshipBulletSpeed 1
 .eqv Max_Score 99999999
@@ -141,6 +167,7 @@ main:
 	jal clear_screen
 restart:
         jal initialize
+        jal DrawBackGround
 	jal DrawUI
 	jal DrawTittle
 	jal DrawScorePoint
@@ -170,12 +197,12 @@ keyevent_end:
 	jal EraseBullets
 	jal EraseObstacles
 	jal EraseSpaceship
+	jal DrawAddOns
 	jal MoveSpaceship
-	jal MoveObstacle1
-	jal MoveObstacle2
-	jal MoveObstacle3
+	jal MoveObstacles
 	jal MoveBullets
 	jal CheckCollisionsObstacles
+	jal CheckCollisionsAddOns
 	jal DrawBullets
 	jal DrawObstacles
 	jal DrawSpaceship
@@ -183,15 +210,18 @@ keyevent_end:
 	subi $s6,$s6,1
 	sw $s6,Timer
 	bnez $s6,obstacle_increased
+	jal DrawStar
 	li $s6,newEnemyTime
 	sw $s6,Timer
 	jal AddNewObstacle
+	jal AddNewAddon
 obstacle_increased:
 	jal DrawHeart
+	jal DrawAvailableBullets
 	jal DrawScorePoint
 	jal UpdateLevel
 	lw $t0, spaceshipHp
-	beqz $t0, Gameend
+	blez $t0, Gameend
       	j Game
 Gameend:
 	li $a2, GameOverColor
@@ -216,10 +246,26 @@ prog_end:	# Jump here if there's an exception.
 initialize:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
+	sw $zero, curr_level
+	li $t0, hitboxinitDamage
+	sw $t0,hitboxDamage
+	li $t0, obst1initHp
+	sw $t0,obst1Hp
+	li $t0, obst2initHp
+	sw $t0,obst2Hp
+	li $t0, obst3initHp
+	sw $t0,obst3Hp
+	li $t0, obst1initmovecd
+	sw $t0,obst1movecd
+	li $t0, obst2initmovecd
+	sw $t0,obst2movecd
+	li $t0, obst3initmovecd
+	sw $t0,obst3movecd
 	sw $zero, ScoreReachesMax
 	sw $zero, RestartStatus
-	li $t0,1
-	sw $t0,scroll_screen_speed
+	li $t0, Max_Bullets
+	sw $t0, availableBullets
+	sw $zero,scroll_screen_speed
 	sw $zero, shootTime
 	li $t0, newEnemyTime
 	sw $t0, Timer
@@ -250,6 +296,13 @@ clear_bullet:
 	addi $t0, $t0,12
 	subi $t1, $t1,1
 	bnez $t1, clear_bullet
+	la $t0,addons
+	li $t1,Max_Addon
+clear_addons:
+	sw $zero, 8($t0)
+	addi $t0, $t0,12
+	subi $t1, $t1,1
+	bnez $t1, clear_addons
 	jal AddNewObstacle
 	jal AddNewObstacle
 	lw $ra, 0($sp)
@@ -282,9 +335,12 @@ clear_curr_draws:
 	jal EraseUI
 	sw $zero, spaceshipHp
 	jal DrawHeart
+	sw $zero, availableBullets
+	jal DrawAvailableBullets
 	li $a0, 0x000000
 	jal DrawRestartInfo
 	jal EraseBullets
+	jal EraseAddOns
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
       	jr $ra
@@ -333,10 +389,15 @@ respond_to_d:
 	sw $t1, spaceshipMov
 	j respond_end
 respond_to_space: #shoot
+	lw $t0, availableBullets
+	blt $t0,2 respond_end
 	lw $t0, shootTime
 	bnez $t0, respond_end #if shootcd isn't pass, skip add new bullet
 	li $t0, shootCD
 	sw $t0, shootTime	
+	lw $t0, availableBullets
+	subi $t0, $t0,2
+	sw $t0, availableBullets
 	la $a0, bullet
 	lw $a1, spaceshipPos
 	addi $a1,$a1,17
@@ -345,10 +406,12 @@ respond_to_space: #shoot
 	jal AddNewBullet
 	addi $a2,$a2,10
 	jal AddNewBullet
+	
 	jal DrawBullets	
 respond_end:
 	j keyevent_end
-	
+
+# add new bullet object to according array, initialize the coord of the bullet 
 AddNewBullet:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -371,6 +434,7 @@ add_new_bullet_end:
 	addi $sp, $sp, 4
       	jr $ra
 
+# erase bullets in given bullet array
 EraseBullets:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -399,6 +463,7 @@ erase_bullet_end:
 	addi $sp, $sp, 4
       	jr $ra	
 
+# draw spaceship bullet in bullet array
 DrawBullets:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -425,6 +490,7 @@ draw_bullet_end:
 	addi $sp, $sp, 4
       	jr $ra	
 
+# update bullet position 
 MoveBullets:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -437,6 +503,9 @@ move_bullet_loop:
 	addi $t0, $t0, spaceshipBulletSpeed
 	sw $t0, 0($s0) # update coord x
 	ble $t0, width, skip_move_bullet  #if bullet fly out of screen, remove bullet
+	lw $t0, availableBullets
+	addi $t0,$t0,1
+	sw $t0, availableBullets
 	sw $zero, 8($s0)
 skip_move_bullet:
 	addi $s0, $s0, 12 # check next obst space
@@ -447,6 +516,48 @@ move_bullet_end:
 	addi $sp, $sp, 4
       	jr $ra	
 
+AddNewAddon:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	li $v0, 42         # Service 42, random int range
+	li $a0, 0          # Select random generator 0
+	li $a1, 4     # Select upper bound of random number
+	syscall
+	beqz $a0, add_new_addon_end
+	bgt $a0, Num_Addon_Type,add_new_addon_end
+	la $s0, addons
+	li $s1,Max_Addon
+add_new_addon_loop:
+	lw $t0,8($s0)
+	bnez  $t0,skip_add_new_addon
+	sw $a0, 8($s0)
+random_addon_coord:
+	li $v0, 42         # Service 42, random int range
+	li $a0, 0          # Select random generator 0
+	li $a1, height     # Select upper bound of random number
+	subi $a1,$a1,addonHeight
+	subi $a1,$a1,UIheight
+	syscall	
+	move $t0,$a0
+	li $v0, 42         # Service 42, random int range
+	li $a0, 0          # Select random generator 0
+	li $a1, width     # Select upper bound of random number
+	subi $a1,$a1,addonWidth
+	syscall
+	move $a1,$t0
+	jal CheckCollisionAToS
+	bnez $v0,random_addon_coord
+	sw $a0,0($s0)
+	sw $a1,4($s0)
+	j add_new_addon_end
+skip_add_new_addon:
+	addi $s0,$s0,12
+	subi $s1,$s1,1
+	bgtz $s1,add_new_addon_loop
+add_new_addon_end:
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+      	jr $ra	
 
 # This function add a new random obstacle to the obstacles array. It go through the obstacle array to find an empty obst and cover it with new obstacle created with random generator.
 # If no empty space found in obst array, it does nothing and return
@@ -459,7 +570,8 @@ AddNewObstacle:
 	li $t0, 1
 	beq $t0, $a0, AddNewObstacle2
 	j AddNewObstacle3
-
+	
+# This function find a empty space in given array, and create a new obst on that place, and set initial x coord 
 add_new_obst:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -490,6 +602,7 @@ add_new_obst_end:
 	addi $sp, $sp, 4
       	jr $ra
 
+# New obstacle creation function for obst1, set initial y coord, movement arguments, movecd, hp.
 AddNewObstacle1:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -517,15 +630,16 @@ set_obst1_down:
 	sw $t1, 12($t0) #write mov y
 	lw $t1, obst1Mov
 	sw $t1, 8($t0) #write mov x
-	li $t1, obst1Hp
+	lw $t1, obst1Hp
 	sw $t1, 16($t0)
-	li $t1, obst1movecd
+	lw $t1, obst1movecd
 	sw $t1, 20($t0)
 AddNewObstacle1_end:	
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
       	jr $ra
 
+# New obstacle creation function for obst2, set initial y coord, movement arguments, movecd, hp.
 AddNewObstacle2:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -545,15 +659,16 @@ AddNewObstacle2:
 	sw $t1, 12($t0) #write mov y
 	lw $t1, obst2Mov
 	sw $t1, 8($t0) #write mov x
-	li $t1, obst2Hp
+	lw $t1, obst2Hp
 	sw $t1, 16($t0)
-	li $t1, obst2movecd
+	lw $t1, obst2movecd
 	sw $t1, 20($t0)
 AddNewObstacle2_end:	
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
       	jr $ra
       	
+# New obstacle creation function for obst3, set initial y coord, movement arguments, movecd, hp.
 AddNewObstacle3:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -573,15 +688,14 @@ AddNewObstacle3:
 	sw $t1, 12($t0) #write mov y
 	lw $t1, obst3Mov
 	sw $t1, 8($t0) #write mov x
-	li $t1, obst3Hp
+	lw $t1, obst3Hp
 	sw $t1, 16($t0)
-	li $t1, obst3movecd
+	lw $t1, obst3movecd
 	sw $t1, 20($t0)
 AddNewObstacle3_end:	
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
       	jr $ra
-
 
 RemoveObst:
 	addi $sp, $sp, -4
@@ -590,8 +704,8 @@ RemoveObst:
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
       	jr $ra
-	
-	
+
+# This function update spaceship's position according to current mov x, mov y; and also count down shield time and shoot time.
 MoveSpaceship:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -617,6 +731,7 @@ shootTime_updated:
 	addi $sp, $sp, 4
       	jr $ra
 
+# Erase spaceship at current pos
 EraseSpaceship:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -638,6 +753,7 @@ skip_erase_spaceship:
 	addi $sp, $sp, 4
       	jr $ra
 
+# Draw spaceship at current pos
 DrawSpaceship:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -650,8 +766,58 @@ DrawSpaceship:
       	jal DrawShield
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
+      	jr $ra 	
+      	
+DrawAddOn1:
+	addi $sp,$sp,-4
+	sw $ra, 0($sp)
+	lw $s0, 0($a0)
+	lw $s1, 4($a0)
+      	la $a0, addon1Color # load address of color array
+      	la $a1, addon1Yellow # load address of pixel value array
+      	la $a2, addon1NumPixel # load address of changecolor factor array
+      	jal Draw
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
       	jr $ra
 
+DrawAddOn2:
+	addi $sp,$sp,-4
+	sw $ra, 0($sp)
+	lw $s0, 0($a0)
+	lw $s1, 4($a0)
+      	la $a0, addon2Color # load address of color array
+      	la $a1, addon2Silver # load address of pixel value array
+      	la $a2, addon2NumPixel # load address of changecolor factor array
+      	jal Draw
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+      	jr $ra
+
+EraseAddOn1:
+	addi $sp,$sp,-4
+	sw $ra, 0($sp)
+	lw $s0, 0($a0)
+	lw $s1, 4($a0)
+      	la $a1, addon1Yellow # load address of pixel value array
+      	la $a2, addon1NumPixel # load address of changecolor factor array
+      	jal Erase
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+      	jr $ra
+
+EraseAddOn2:
+	addi $sp,$sp,-4
+	sw $ra, 0($sp)
+	lw $s0, 0($a0)
+	lw $s1, 4($a0)
+      	la $a1, addon2Silver # load address of pixel value array
+      	la $a2, addon2NumPixel # load address of changecolor factor array
+      	jal Erase
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+      	jr $ra
+# Erase shield at current pos
 EraseShield:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -675,7 +841,8 @@ skip_erase_shield:
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
       	jr $ra
-
+      	
+# Draw shield at current pos
 DrawShield:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -692,6 +859,7 @@ skip_draw_shield:
 	addi $sp, $sp, 4
       	jr $ra
 
+# Convert coord x,y to address on $sp
 CoordToAddress:
 	mul $v0,$a1,widthAddr
 	sll $a0,$a0,2
@@ -699,7 +867,7 @@ CoordToAddress:
 	add $v0,$v0,displayAddress
 	jr $ra
 	
-	
+# Draw object function given object infos(pixels coord, colors, num of pixels)
 Draw:   
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -734,7 +902,8 @@ skip_draw:
 	addi $t6, $t6, 8 # next pixel
 	subi $t4,$t4,1
 	j draw_loop # jump to Draw
-
+	
+# Erase(by draw black) object function given object infos(pixels coord, num of pixels)
 Erase:   
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -767,7 +936,7 @@ skip_erase:
 	addi $t6, $t6, 8 # next pixel
 	subi $t4,$t4,1
 	j erase_loop # jump to erase
-
+# This function makes an animation showing spaceship move into its initial pos by keep doing erase,move, redraw spaceship untill its coord x reaches intX
 StartAnimation:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -781,14 +950,13 @@ start_animation_loop:
 	jal MoveSpaceship
 	jal DrawSpaceship
 	li $v0, 32
-	li $a0, 200		
+	li $a0, 40		
 	syscall
 	j start_animation_loop
 start_animation_end:
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
 	jr $ra
-
 
 ## This function loop through obstacles array to check if there are collisions. 
 ## For every obstacle alive, it first check whether it collision with spaceship. if yes, remove this obstacle and reduce spaceship's hp
@@ -826,20 +994,23 @@ shield_broken:
 	li $t0, 1
 	sw $t0, Hpchanged
 	lw $t0, spaceshipHp
-	subi $t0, $t0, hitboxDamage
+	lw $t1,hitboxDamage
+	sub $t0, $t0, $t1
 	sw $t0, spaceshipHp
 check_shields_end:
 	sw $zero, 16($s7) # reduce this obst's hp to 0
 	j skip_check_collision
 collision_with_bullet:
 	# if this obst has collision with bullet, reduce obst hp by bullet damage and remove that bullet 
+	lw $t0, availableBullets # available bullet +1
+	addi $t0,$t0,1
+	sw $t0, availableBullets
 	lw $t0, 16($s7) # hp
 	subi $t0, $t0, bulletDamage #reduce obst hp by bullet damage
 	sw $t0, 16($s7) # write updated hp to this obst's hp
 	# increase the score
 	li $a0,bulletDamage
 	jal ChangeScore
-	addi $t1,$t1,1
 skip_check_collision:
 	subi $s6,$s6,1 #count for num of curr type obstacles checked
 	addi $s7, $s7,28 #next obstacle
@@ -899,7 +1070,6 @@ check_collision_S_to_O_end:
 	addi $sp, $sp, 4
       	jr $ra
 
-
 #This function checks whether there is a bullet in an obst's hit box.
 CheckCollisionOToB:
 	addi $sp, $sp, -4
@@ -944,10 +1114,92 @@ check_collision_O_to_B_end:
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
       	jr $ra
-
-MoveObstacle1:
+   
+#This function checks whether a given addon has collision with spaceship
+CheckCollisionAToS:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
+	li $v0,0 # set result to 0
+	lw $t0, spaceshipPos #coord x of spaceship
+	lw $t1, spaceshipHitBoxBd #hitbox border right of spaceship
+	move $t2, $a0 #coord x of onst
+	li $t3, addonWidth # width of obst
+	# if  coord x o < coord xs + hitboxbd r -width o, no collision
+	sub $t5, $t0,$t3
+	add $t5, $t5, $t1
+	blt $t2,$t5,check_collision_A_to_S_end
+	# if coord x o > coord xs+width s - hitboxbd l, no collision
+	lw $t1, spaceshipHitBoxBd+ 12 #hitbox border left of spaceship
+	addi $t5, $t0, spaceshipWidth
+	sub $t5,$t5,$t1
+	bgt $t2, $t5, check_collision_A_to_S_end
+	# if coord y o < coord y s + hitboxbd t - height o, no collision
+	lw $t0, spaceshipPos +4 # coord y of spaceship
+	lw $t1, spaceshipHitBoxBd +4  #hitbox border top of spaceship
+	move $t2, $a1 #coord y of obst
+	li $t3, addonHeight #height of obst
+	add $t5,$t0,$t1
+	sub $t5,$t5, $t3
+	blt $t2, $t5, check_collision_A_to_S_end
+	# if coord y o > coord y s - hitboxbd b + height s, no collision
+	lw $t1, spaceshipHitBoxBd+ 8 #hitbox border bottom of spaceship
+	addi $t5, $t0, spaceshipHeight
+	sub $t5,$t5,$t1
+	bgt $t2, $t5, check_collision_A_to_S_end
+	#find collision, set result to 1
+	li $v0,1
+check_collision_A_to_S_end:
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+      	jr $ra  
+          
+CheckCollisionsAddOns:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	la $s7, addons
+	li $s6, Max_Addon
+check_collisions_addons_loop:
+	lw $s2,8($s7)
+	beqz $s2,skip_check_collision_addon
+	lw $a0,0($s7)
+	lw $a1,4($s7)
+	jal CheckCollisionAToS
+	beqz $v0, skip_check_collision_addon
+	# find collision, pick up
+	beq $s2,1,pick_up_addon1
+	beq $s2,2,pick_up_addon2
+	j skip_check_collision_addon
+pick_up_addon1:
+	lw $t0, shieldTime
+	addi $t0,$t0,50
+	sw $t0,shieldTime
+	move $a0,$s7
+	sw $zero,8($s7)
+	jal EraseAddOn1
+	j skip_check_collision_addon
+pick_up_addon2:
+	lw $t0,spaceshipHp
+	addi $t0,$t0,2
+	bgt $t0,Max_Hp,keep_max_health
+	li $t0,Max_Hp
+keep_max_health:
+	sw $t0,spaceshipHp
+	move $a0,$s7
+	sw $zero,8($s7)
+	jal EraseAddOn2
+skip_check_collision_addon:
+	addi $s7,$s7,12
+	subi $s6,$s6,1
+	bgtz $s6,check_collisions_addons_loop
+check_collisions_addons_end:
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+      	jr $ra  
+                                  
+MoveObstacles:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+MoveObstacle1:
 	la $s7, obstacle1
 	li $s6, Max_Obstacles
 move_obstacle1_loop:
@@ -967,7 +1219,7 @@ move_obstacle1_loop:
 	blez $t4, remove_obst1
 	lw $t4, 20($s7) #movecd
 	bgtz $t4, skip_move_obst1
-	li $t4, obst1movecd
+	lw $t4, obst1movecd
 	sw $t4, 20($s7) #reset obst1 cd
 	lw $t4,4($s7) #coord y of obst 1
 	lw $t5,12($s7) # mov y
@@ -999,7 +1251,7 @@ remove_obst1:
 	jal RemoveObst
 	jal AddNewObstacle
 	# when a obst removed, increase score by its hp * screen rolling speed
-	li $t4, obst1Hp
+	lw $t4, obst1Hp
 	lw $t5, scroll_screen_speed
 	addi $t5,$t5,1
 	mul $t4, $t4,$t5
@@ -1016,14 +1268,8 @@ skip_obst1:
 	addi $s7, $s7,28
 	bnez $s6, move_obstacle1_loop
 move_obst1_end:
-	lw $ra, 0($sp)
-	addi $sp, $sp, 4
-      	jr $ra
-
 
 MoveObstacle2:
-	addi $sp, $sp, -4
-	sw $ra, 0($sp)
 	la $s7, obstacle2
 	li $s6, Max_Obstacles
 move_obstacle2_loop:
@@ -1042,7 +1288,7 @@ move_obstacle2_loop:
 	blez $t4, remove_obst2
 	lw $t4, 20($s7) #movecd
 	bgtz $t4, skip_move_obst2
-	li $t4, obst2movecd
+	lw $t4, obst2movecd
 	sw $t4, 20($s7) #reset obst1 cd
 	lw $t5, 12($s7)
 	lw $t4, 4($s7) #coord y
@@ -1061,7 +1307,7 @@ remove_obst2:
 	jal RemoveObst
 	jal AddNewObstacle
 	# when a obst removed, increase score by its hp * screen rolling speed
-	li $t4, obst2Hp
+	lw $t4, obst2Hp
 	lw $t5, scroll_screen_speed
 	addi $t5,$t5,1
 	mul $t4, $t4,$t5
@@ -1077,13 +1323,8 @@ skip_obst2:
 	addi $s7, $s7,28
 	bnez $s6, move_obstacle2_loop
 move_obst2_end:
-	lw $ra, 0($sp)
-	addi $sp, $sp, 4
-      	jr $ra
 
 MoveObstacle3:
-	addi $sp, $sp, -4
-	sw $ra, 0($sp)
 	la $s7, obstacle3
 	li $s6, Max_Obstacles
 move_obstacle3_loop:
@@ -1095,7 +1336,7 @@ move_obstacle3_loop:
 	blez $t4, remove_obst3
 	lw $t4, 20($s7) #movecd
 	bgtz $t4, skip_move_obst3
-	li $t4, obst3movecd
+	lw $t4, obst3movecd
 	sw $t4, 20($s7) #reset obst1 cd
 	lw $t4, 8($s7)#movx
 	lw $t5, obst3Mov
@@ -1121,7 +1362,7 @@ remove_obst3:
 	jal RemoveObst
 	jal AddNewObstacle
 	# when a obst removed, increase score by its hp * screen rolling speed
-	li $t4, obst3Hp
+	lw $t4, obst3Hp
 	lw $t5, scroll_screen_speed
 	addi $t5,$t5,1
 	mul $t4, $t4,$t5
@@ -1137,6 +1378,8 @@ skip_obst3:
 	addi $s7, $s7,28
 	bnez $s6, move_obstacle3_loop
 move_obst3_end:
+
+move_obsts_end:
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
       	jr $ra
@@ -1241,9 +1484,55 @@ skip_erase_obst:
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
 	jr $ra
+#### Add-ons
+
+DrawAddOns:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	li $s6, Max_Addon
+	la $s5, addons
+draw_addon_loop:
+	lw $t0,8($s5)
+	beqz $t0,draw_addon_end
+	move $a0,$s5
+	beq $t0,2,draw_addon2
+draw_addon1:
+	jal DrawAddOn1
+	j draw_addon_end
+draw_addon2:
+	jal DrawAddOn2
+draw_addon_end:
+	addi $s5,$s5,12
+	subi $s6,$s6,1
+	bnez $s6,draw_addon_loop
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+EraseAddOns:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	li $s6, Max_Addon
+	la $s5, addons
+erase_addon_loop:
+	lw $t0,8($s5)
+	beqz $t0,erase_addon_end
+	move $a0,$s5
+	beq $t0,2,erase_addon2
+erase_addon1:
+	jal EraseAddOn1
+	j erase_addon_end
+erase_addon2:
+	jal EraseAddOn2
+erase_addon_end:
+	addi $s5,$s5,12
+	subi $s6,$s6,1
+	bnez $s6,erase_addon_loop
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
 
 ## Big texts
-
 DrawSquare:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -2980,7 +3269,6 @@ DrawSmall1:
 	jr $ra
 
 ############### UI, score, and other things
-
 DrawUI:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -2994,6 +3282,7 @@ DrawUI:
 	lw $a3, HeartColor
 	jal DrawHpContainers
 	jal DrawHeart
+	jal DrawAvailableBullets
 	li $a3, 0xffffff
 	li $a2, GameOverColor
 	lw $ra, 0($sp)
@@ -3014,7 +3303,8 @@ EraseUI:
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
 	jr $ra
-		
+
+# This function draw a horizon line start from (a0,a1) and ends at (a2,a1)
 DrawHorizLine:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)	
@@ -3032,6 +3322,7 @@ draw_horiz_line_loop:
 	addi $sp, $sp, 4
 	jr $ra
 
+# This function draws max_hp number of heart containers
 DrawHpContainers:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)	
@@ -3061,7 +3352,44 @@ draw_one_heart_container:
 	addi $sp, $sp, 4
 	jr $ra
 
-
+DrawAvailableBullets:
+	addi $sp,$sp,-4
+	sw $ra, 0($sp)	
+	lw $s2, availableBullets
+	li $t0, 2
+	div $s2,$t0
+	mflo $s2
+	li $s3, Max_Bullets
+	srl $s3,$s3,1
+	lw $s0, AvailableBulletsPos
+	lw $s1, AvailableBulletsPos+4
+      	li $s6, spaceshipBulletColor
+      	lw $t0, shootTime
+      	bnez $t0, draw_available_bullet_loop
+      	li $s6, 0xaa0000
+draw_available_bullet_loop:
+	bgtz $s2, bullet_erase
+	li $s6, 0x000000
+bullet_erase:
+	li $t3,0
+draw_one_bullet:
+	add $a0,$zero,$s0
+	add $a1,$t3,$s1
+	jal CoordToAddress
+	sw $s6,($v0)
+	addi $t3,$t3,1
+	blt $t3,5, draw_one_bullet
+	subi $s2,$s2,1
+	subi $s3,$s3,1
+	addi $s0,$s0,3
+	li $s6, spaceshipBulletColor
+	bgtz  $s3, draw_available_bullet_loop
+draw_available_bullet_end:
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+	
+# This function draw current hearts spaceship have, erase hearts that spaceship losses from max hearts.
 DrawHeart:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)	
@@ -3099,11 +3427,11 @@ draw_hp_end:
 	addi $sp, $sp, 4
 	jr $ra
 
+# This function update currScore by input value.
 ChangeScore:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)	
 	lw $t0, currScore
-	# Save current score to previous score
 	add $t0,$t0,$a0 # change score
 	sw $t0, currScore
 	ble $t0,Max_Score, change_score_end
@@ -3113,39 +3441,82 @@ change_score_end:
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
 	jr $ra
-
+	
+# This function updates the scroll screen speed,obstacle move speed , obstacle max hp, damage to spaceship when score reaches some value.
 UpdateLevel:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)	
-	li $t0,1 
-	sw $t0,scroll_screen_speed
 	lw $t0, currScore
-	bge $t0, 2000, level_4
-	bge $t0, 1000, level_3
-	bge $t0, 500, level_2
-	bge $t0, 100, level_1
+	bge $t0, 10000, level_7
+	bge $t0, 5000, level_6
+	bge $t0, 2500, level_5
+	bge $t0, 1000, level_4
+	bge $t0, 500, level_3
+	bge $t0, 100, level_2
+	bge $t0, 25, level_1
 	j change_level_end
-level_1:
-	li $t0,2
+level_7:
+	lw $t0, curr_level
+	bge $t0,7, change_level_end
+	li $t0, 2
 	sw $t0, scroll_screen_speed
-	j change_level_end
-level_2:
-	li $t0,3
-	sw $t0, scroll_screen_speed
-	j change_level_end
-level_3:
-	li $t0,4
-	sw $t0, scroll_screen_speed
-	j change_level_end
-level_4:
+	li $t0,7
+	sw $t0,curr_level
+level_6:
+	lw $t0, curr_level
+	bge $t0,6, change_level_end
+	lw $t0, obst1Hp
+	addi $t0, $t0,1
+	sw $t0, obst1Hp
+	li $t0,6
+	sw $t0,curr_level
+level_5:
+	lw $t0, curr_level
+	bge $t0,5, change_level_end
+	li $t0, 3
+	sw $t0, obst1Mov + 4
+	li $t0, 2
+	sw $t0, obst2movecd
+	sw $zero, obst3movecd
 	li $t0,5
+	sw $t0,curr_level
+level_4:
+	lw $t0, curr_level
+	bge $t0,4, change_level_end
+	li $t0, 2
+	sw $t0, hitboxDamage
+	li $t0,4
+	sw $t0,curr_level
+level_3:
+	lw $t0, curr_level
+	bge $t0,3, change_level_end
+	li $t0, 3
+	sw $t0, obst1Mov + 4
+	li $t0,3
+	sw $t0,curr_level
+level_2:
+	lw $t0, curr_level
+	bge $t0,2, change_level_end
+	lw $t0, obst2Hp
+	addi $t0,$t0,1
+	sw $t0, obst2Hp
+	lw $t0, obst3Hp
+	addi $t0, $t0,1
+	sw $t0, obst3Hp
+	li $t0,2
+	sw $t0,curr_level
+level_1:
+	lw $t0, curr_level
+	bge $t0,1, change_level_end
+	li $t0,1
 	sw $t0, scroll_screen_speed
-	j change_level_end
+	sw $t0,curr_level
 change_level_end:
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
 	jr $ra
 
+# This function erase and redraw scores digits on change
 DrawScorePoint:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -3154,9 +3525,11 @@ DrawScorePoint:
 	lw $s4, currScore
 	lw $s5, prevScore
 	beq $s4,$s5, draw_score_point_end
-	div $t1, $s4, 10000000
+	div $t1, $s4, 10000000 # for the most left digit score[n], get the q of score/(10^n)
 	div $t0, $s5, 10000000
-	beq $t0,$t1,skip_redraw_7th_digit
+	li $s6, 10000000
+	li $s7,0
+	beq $t0,$t1,redraw_nth_digit
 	li $a3,0x000000
 	li $a1,0
 	li $a0,0
@@ -3167,142 +3540,29 @@ DrawScorePoint:
 	li $a0,0
 	div $a2, $s4, 10000000
 	jal DrawDigit
-skip_redraw_7th_digit:
-	li $t0, 10000000
+redraw_nth_digit:
+	addi $s7,$s7,4
+	beq $s6,1 draw_score_point_end
+	move $t0, $s6
 	div $s4, $t0
 	mfhi $s4
 	div $s5, $t0
 	mfhi $s5
-	div $t1, $s4, 1000000
-	div $t0, $s5, 1000000
-	beq $t0,$t1,skip_redraw_6th_digit
+	div $s6,$s6,10
+	div $t1, $s4, $s6 # for other digit score[i], get score % 10^n % 10^(n-1) % ... % 10^{i+1} / 10^i
+	div $t0, $s5, $s6
+	beq $t0,$t1,redraw_nth_digit
 	li $a3,0x000000
 	move $a2, $t0
 	li $a1,0
-	li $a0,4
+	move $a0,$s7
 	jal DrawDigit
 	li $a3,UIColor
-	div $a2, $s4, 1000000
-	move $a2,$t1
+	div $a2, $s4, $s6
 	li $a1,0
-	li $a0,4
+	move $a0,$s7
 	jal DrawDigit
-skip_redraw_6th_digit:
-	li $t0, 1000000
-	div $s4, $t0
-	mfhi $s4
-	div $s5, $t0
-	mfhi $s5
-	div $t1, $s4, 100000
-	div $t0, $s5, 100000
-	beq $t0,$t1,skip_redraw_5th_digit
-	li $a3,0x000000
-	move $a2, $t0
-	li $a1,0
-	li $a0,8
-	jal DrawDigit
-	li $a3,UIColor
-	div $a2, $s4, 100000
-	move $a2,$t1
-	li $a1,0
-	li $a0,8
-	jal DrawDigit
-skip_redraw_5th_digit:
-	li $t0, 100000
-	div $s4, $t0
-	mfhi $s4
-	div $s5, $t0
-	mfhi $s5
-	div $t1, $s4, 10000
-	div $t0, $s5, 10000
-	beq $t0,$t1,skip_redraw_4th_digit
-	li $a3,0x000000
-	move $a2, $t0
-	li $a1,0
-	li $a0,12
-	jal DrawDigit
-	li $a3,UIColor
-	div $a2, $s4, 10000
-	move $a2,$t1
-	li $a1,0
-	li $a0,12
-	jal DrawDigit
-skip_redraw_4th_digit:
-	li $t0, 10000
-	div $s4, $t0
-	mfhi $s4
-	div $s5, $t0
-	mfhi $s5
-	div $t1, $s4, 1000
-	div $t0, $s5, 1000
-	beq $t0,$t1,skip_redraw_3th_digit
-	li $a3,0x000000
-	move $a2, $t0
-	li $a1,0
-	li $a0,16
-	jal DrawDigit
-	li $a3,UIColor
-	div $a2, $s4, 1000
-	li $a1,0
-	li $a0,16
-	jal DrawDigit
-skip_redraw_3th_digit:
-	li $t0, 1000
-	div $s4, $t0
-	mfhi $s4
-	div $s5, $t0
-	mfhi $s5
-	div $t1, $s4, 100
-	div $t0, $s5, 100
-	beq $t0,$t1,skip_redraw_2th_digit
-	li $a3,0x000000
-	move $a2, $t0
-	li $a1,0
-	li $a0,20
-	jal DrawDigit
-	li $a3,UIColor
-	div $a2, $s4, 100
-	li $a1,0
-	li $a0,20
-	jal DrawDigit
-skip_redraw_2th_digit:
-	li $t0, 100
-	div $s4, $t0
-	mfhi $s4
-	div $s5, $t0
-	mfhi $s5
-	div $t1, $s4, 10
-	div $t0, $s5, 10
-	beq $t0,$t1,skip_redraw_1th_digit
-	li $a3,0x000000
-	move $a2, $t0
-	li $a1,0
-	li $a0,24
-	jal DrawDigit
-	li $a3,UIColor
-	div $a2, $s4, 10
-	li $a1,0
-	li $a0,24
-	jal DrawDigit
-skip_redraw_1th_digit:
-	li $t0, 10
-	div $s4, $t0
-	mfhi $s4
-	div $s5, $t0
-	mfhi $s5
-	div $t1, $s4, 1
-	div $t0, $s5, 1
-	beq $t0,$t1,draw_score_point_end
-	li $a3,0x000000
-	move $a2, $t0
-	li $a1,0
-	li $a0,28
-	jal DrawDigit
-	li $a3,UIColor
-	div $a2, $s4, 1
-	li $a1,0
-	li $a0,28
-	jal DrawDigit
+	j redraw_nth_digit
 draw_score_point_end:
 	lw $t0, currScore
 	sw $t0, prevScore
@@ -3310,7 +3570,7 @@ draw_score_point_end:
 	addi $sp, $sp, 4
 	jr $ra
 
-
+# This function redirect to branches of drawing 0-9
 DrawDigit:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -3355,6 +3615,45 @@ draw_digit_9:
 	jal DrawSmall9
 	j draw_digit_end
 draw_digit_end:
+	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+DrawBackGround:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	li $s1, 10
+draw_stars:
+	jal DrawStar
+    	subi $s1,$s1,1
+    	bnez $s1, draw_stars
+    	lw $ra, 0($sp)
+	addi $sp, $sp, 4
+	jr $ra
+
+DrawStar:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	li $a1, width  
+   	li $v0, 42  
+    	syscall
+    	move $t0,$a0 #coord x
+    	li $a1, height
+    	subi $a1, $a1, UIheight
+   	li $v0, 42  
+    	syscall
+    	move $t1,$a0 #coord y
+    	li $a1, 5
+   	li $v0, 42  
+    	syscall
+    	sll $a0,$a0,2
+    	la $s0, starsColor
+    	add $t2, $s0,$a0
+    	move $a0,$t0
+    	move $a1,$t1
+    	jal CoordToAddress
+    	lw $t2,0($t2)
+    	sw $t2,0($v0)
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
 	jr $ra
