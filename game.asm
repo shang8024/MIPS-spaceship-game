@@ -6,9 +6,9 @@
 #
 # Bitmap Display Configuration:
 # -Unit width in pixels: 2
-# -Unit height in pixels: 2 
+# -Unit height in pixels: 2
 # -Display width in pixels: 512 (256 units)
-# -Display height in pixels: 256 (128 units)
+# -Display height in pixels: 256(128 units)
 # -Base Address for Display: 0x10010000 ($sp)
 #
 # Which milestones have beenreached in this submission?
@@ -20,12 +20,14 @@
 # 1. Shoot obstacles: players can shoot obstacles by pressing "space", and player can see the bullets reloading at the bottom of the screen, and the first bullet sign wil turns red when spaceship is ready to shoot
 # 2. Scoring system: score system based on near misses, shoot on obstacles, obstacles crash or move out of screen. 
 # 3. increase in difficulty as game progresses: As score increases, the speed of obstacles will increase and there will be more and more obstacles (of different obstacle types) on the screen.
-# ... (add more if necessary)
+# 4. Pick-ups: each time new enemy appears, there might be a new add-on appear on the screen at random place (without overlapping with spaceship). There are two add-ons. A shield that when picked up, spaceship will get a shield or extends shield time. A spaceship-repair that when picked up, spaceship's hp will increase by 2 (and will not exceed max hp of spaceship).
 ## Link to video demonstration for final submission:
-# -(insert YouTube / MyMedia / other URL here). Make sure we can view it!
+# -https://1drv.ms/v/s!AptoIQPCLqgs-EYA5sx9M2pSGf_d?e=dknctn
 #
 # Are you OKwith us sharing the video with people outside course staff?# -yes / no/ yes, and please share this project githublink as well!
-# yes
+# yes 
+# https://github.com/shang8024/MIPS-spaceship-game
+# git@github.com:shang8024/MIPS-spaceship-game.git
 # Any additional information that the TA needs to know:
 # 
 ######################################################################
@@ -62,17 +64,17 @@ obst3Pink1: .word 3,0,4,0,5,0,8,0,9,0,10,0,18,0,17,1,16,1,15,1,12,1,11,1,7,1,6,1
 obst3Pink2: .word 6,2,7,2,8,3,17,3,9,4,10,4,11,4,12,4,13,4,14,4,15,4,16,4,16,6,15,6,14,6,13,6,11,8,10,9,9,9,8,9,2,4,3,4,2,7,3,7
 obst3NumPixel: .word 94,24,0
 
-addon1Color: .word 0xfff38b,0xffffff
-addon1Yellow: .word 2,0,3,0,1,1,4,1,0,2,5,2,0,3,5,3,1,4,4,4,2,5,3,5
-addon1White: .word 3,1,4,2
-addon1NumPixel: .word 12,2,0
+pickup1Color: .word 0xfff38b,0xffffff
+pickup1Yellow: .word 2,0,3,0,1,1,4,1,0,2,5,2,0,3,5,3,1,4,4,4,2,5,3,5
+pickup1White: .word 3,1,4,2
+pickup1NumPixel: .word 12,2,0
 
-addon2Color: .word 0xbababa,0xffffff
-addon2Silver: .word 1,0,2,0,2,1,0,2,1,2,2,2,3,2,3,3,4,3,5,4,5,5
-addon2White: .word 2,3,3,4,4,5
-addon2NumPixel: .word 11,3,0
+pickup2Color: .word 0xbababa,0xffffff
+pickup2Silver: .word 1,0,2,0,2,1,0,2,1,2,2,2,3,2,3,3,4,3,5,4,5,5
+pickup2White: .word 2,3,3,4,4,5
+pickup2NumPixel: .word 11,3,0
 
-addons: .word 0:15 #coordx, coordy,type
+pickups: .word 0:12 #coordx, coordy,type
 spaceshipPos: .word -10,63
 spaceshipMov: .word 1,0
 spaceshipHitBoxBd: .word 5,3,3,2 #left top bottom right
@@ -98,10 +100,10 @@ GameOverLoc: .word 65,25
 AvailableBulletsPos: .word 115,121
 ScorePos: .word 188,121
 ScorePointPos: .word 212,121
-obstacle1: .word	0:56 	#coordx,cordy,movx,movy,HP,move_cd,alive ufo
-obstacle2: .word	0:56 	#coordx,cordy,movx,movy,HP,move_cd,alive planet
-obstacle3: .word	0:56 	#coordx,cordy,movx,movy,HP,move_cd,alive alien
-bullet: .word 0: 90 #coordx,coordy,exist
+obstacle1: .word	0:42 	#coordx,cordy,movx,movy,HP,move_cd,alive ufo
+obstacle2: .word	0:42 	#coordx,cordy,movx,movy,HP,move_cd,alive planet
+obstacle3: .word	0:42 	#coordx,cordy,movx,movy,HP,move_cd,alive alien
+bullet: .word 0: 60 #coordx,coordy,exist
 currScore: .word 0
 prevScore: .word 99999999
 shieldTime: .word 50
@@ -122,13 +124,13 @@ obst2movecd: .word 3
 obst3movecd: .word 2
 hitboxDamage: .word 1
 curr_level: .word 0
-.eqv addonHeight 6
-.eqv addonWidth 6
-.eqv Num_Addon_Type 2
-.eqv Max_Addon 5
+.eqv pickupHeight 6
+.eqv pickupWidth 6
+.eqv Num_Pickup_Type 2
+.eqv Max_Pickup 4
 .eqv hitboxinitDamage 1
 .eqv bulletDamage 1
-.eqv Max_Bullets 30
+.eqv Max_Bullets 20
 .eqv Max_Hp 10
 .eqv displayAddress 0x10010000
 .eqv width 255
@@ -140,7 +142,7 @@ curr_level: .word 0
 .eqv spaceshipWidth 21
 .eqv GameOverColor 0x0000ab
 .eqv UIColor 0xffffff
-.eqv Max_Obstacles 8
+.eqv Max_Obstacles 6
 .eqv Num_Obstacle_Type 3
 .eqv Obstacle_Appear_Buffer 20
 .eqv obst1initHp 1
@@ -167,7 +169,6 @@ main:
 	jal clear_screen
 restart:
         jal initialize
-        jal DrawBackGround
 	jal DrawUI
 	jal DrawTittle
 	jal DrawScorePoint
@@ -194,15 +195,14 @@ keyevent_end:
 	li $a0, 40 #sleep for 40
 	syscall
 	lw $zero, Hpchanged
-	jal EraseBullets
 	jal EraseObstacles
 	jal EraseSpaceship
-	jal DrawAddOns
+	jal DrawPickUps
 	jal MoveSpaceship
 	jal MoveObstacles
 	jal MoveBullets
 	jal CheckCollisionsObstacles
-	jal CheckCollisionsAddOns
+	jal CheckCollisionsPickUps
 	jal DrawBullets
 	jal DrawObstacles
 	jal DrawSpaceship
@@ -210,11 +210,10 @@ keyevent_end:
 	subi $s6,$s6,1
 	sw $s6,Timer
 	bnez $s6,obstacle_increased
-	jal DrawStar
 	li $s6,newEnemyTime
 	sw $s6,Timer
 	jal AddNewObstacle
-	jal AddNewAddon
+	jal AddNewPickup
 obstacle_increased:
 	jal DrawHeart
 	jal DrawAvailableBullets
@@ -296,13 +295,13 @@ clear_bullet:
 	addi $t0, $t0,12
 	subi $t1, $t1,1
 	bnez $t1, clear_bullet
-	la $t0,addons
-	li $t1,Max_Addon
-clear_addons:
+	la $t0,pickups
+	li $t1,Max_Pickup
+clear_pickups:
 	sw $zero, 8($t0)
 	addi $t0, $t0,12
 	subi $t1, $t1,1
-	bnez $t1, clear_addons
+	bnez $t1, clear_pickups
 	jal AddNewObstacle
 	jal AddNewObstacle
 	lw $ra, 0($sp)
@@ -340,7 +339,7 @@ clear_curr_draws:
 	li $a0, 0x000000
 	jal DrawRestartInfo
 	jal EraseBullets
-	jal EraseAddOns
+	jal ErasePickUps
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
       	jr $ra
@@ -376,6 +375,7 @@ respond_to_s:
 	li $t2,height
 	subi $t2, $t2,spaceshipHeight
 	subi $t2, $t2, UIheight
+	subi $t2,$t2,1
 	bgt $t0, $t2, respond_end
 	sw $t1, spaceshipMov+4 
 	j respond_end
@@ -499,6 +499,10 @@ MoveBullets:
 move_bullet_loop:
 	lw $t0, 8($s0) #get exist of curr bullet
 	beqz $t0, skip_move_bullet # if empty, skip draw
+	lw $a0, 0($s0)
+	lw $a1, 4($s0)
+	jal CoordToAddress
+	sw $zero, 0($v0)
 	lw $t0, 0($s0) # coord x
 	addi $t0, $t0, spaceshipBulletSpeed
 	sw $t0, 0($s0) # update coord x
@@ -516,45 +520,45 @@ move_bullet_end:
 	addi $sp, $sp, 4
       	jr $ra	
 
-AddNewAddon:
+AddNewPickup:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
 	li $v0, 42         # Service 42, random int range
 	li $a0, 0          # Select random generator 0
-	li $a1, 4     # Select upper bound of random number
+	li $a1, 3     # Select upper bound of random number
 	syscall
-	beqz $a0, add_new_addon_end
-	bgt $a0, Num_Addon_Type,add_new_addon_end
-	la $s0, addons
-	li $s1,Max_Addon
-add_new_addon_loop:
+	beqz $a0, add_new_pickup_end
+	bgt $a0, Num_Pickup_Type,add_new_pickup_end
+	la $s0, pickups
+	li $s1,Max_Pickup
+add_new_pickup_loop:
 	lw $t0,8($s0)
-	bnez  $t0,skip_add_new_addon
+	bnez  $t0,skip_add_new_pickup
 	sw $a0, 8($s0)
-random_addon_coord:
+random_pickup_coord:
 	li $v0, 42         # Service 42, random int range
 	li $a0, 0          # Select random generator 0
 	li $a1, height     # Select upper bound of random number
-	subi $a1,$a1,addonHeight
+	subi $a1,$a1,pickupHeight
 	subi $a1,$a1,UIheight
 	syscall	
 	move $t0,$a0
 	li $v0, 42         # Service 42, random int range
 	li $a0, 0          # Select random generator 0
 	li $a1, width     # Select upper bound of random number
-	subi $a1,$a1,addonWidth
+	subi $a1,$a1,pickupWidth
 	syscall
 	move $a1,$t0
 	jal CheckCollisionAToS
-	bnez $v0,random_addon_coord
+	bnez $v0,random_pickup_coord
 	sw $a0,0($s0)
 	sw $a1,4($s0)
-	j add_new_addon_end
-skip_add_new_addon:
+	j add_new_pickup_end
+skip_add_new_pickup:
 	addi $s0,$s0,12
 	subi $s1,$s1,1
-	bgtz $s1,add_new_addon_loop
-add_new_addon_end:
+	bgtz $s1,add_new_pickup_loop
+add_new_pickup_end:
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
       	jr $ra	
@@ -768,51 +772,51 @@ DrawSpaceship:
 	addi $sp, $sp, 4
       	jr $ra 	
       	
-DrawAddOn1:
+DrawPickUp1:
 	addi $sp,$sp,-4
 	sw $ra, 0($sp)
 	lw $s0, 0($a0)
 	lw $s1, 4($a0)
-      	la $a0, addon1Color # load address of color array
-      	la $a1, addon1Yellow # load address of pixel value array
-      	la $a2, addon1NumPixel # load address of changecolor factor array
+      	la $a0, pickup1Color # load address of color array
+      	la $a1, pickup1Yellow # load address of pixel value array
+      	la $a2, pickup1NumPixel # load address of changecolor factor array
       	jal Draw
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
       	jr $ra
 
-DrawAddOn2:
+DrawPickUp2:
 	addi $sp,$sp,-4
 	sw $ra, 0($sp)
 	lw $s0, 0($a0)
 	lw $s1, 4($a0)
-      	la $a0, addon2Color # load address of color array
-      	la $a1, addon2Silver # load address of pixel value array
-      	la $a2, addon2NumPixel # load address of changecolor factor array
+      	la $a0, pickup2Color # load address of color array
+      	la $a1, pickup2Silver # load address of pixel value array
+      	la $a2, pickup2NumPixel # load address of changecolor factor array
       	jal Draw
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
       	jr $ra
 
-EraseAddOn1:
+ErasePickUp1:
 	addi $sp,$sp,-4
 	sw $ra, 0($sp)
 	lw $s0, 0($a0)
 	lw $s1, 4($a0)
-      	la $a1, addon1Yellow # load address of pixel value array
-      	la $a2, addon1NumPixel # load address of changecolor factor array
+      	la $a1, pickup1Yellow # load address of pixel value array
+      	la $a2, pickup1NumPixel # load address of changecolor factor array
       	jal Erase
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
       	jr $ra
 
-EraseAddOn2:
+ErasePickUp2:
 	addi $sp,$sp,-4
 	sw $ra, 0($sp)
 	lw $s0, 0($a0)
 	lw $s1, 4($a0)
-      	la $a1, addon2Silver # load address of pixel value array
-      	la $a2, addon2NumPixel # load address of changecolor factor array
+      	la $a1, pickup2Silver # load address of pixel value array
+      	la $a2, pickup2NumPixel # load address of changecolor factor array
       	jal Erase
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
@@ -1115,7 +1119,7 @@ check_collision_O_to_B_end:
 	addi $sp, $sp, 4
       	jr $ra
    
-#This function checks whether a given addon has collision with spaceship
+#This function checks whether a given pickup has collision with spaceship
 CheckCollisionAToS:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -1123,7 +1127,7 @@ CheckCollisionAToS:
 	lw $t0, spaceshipPos #coord x of spaceship
 	lw $t1, spaceshipHitBoxBd #hitbox border right of spaceship
 	move $t2, $a0 #coord x of onst
-	li $t3, addonWidth # width of obst
+	li $t3, pickupWidth # width of obst
 	# if  coord x o < coord xs + hitboxbd r -width o, no collision
 	sub $t5, $t0,$t3
 	add $t5, $t5, $t1
@@ -1137,7 +1141,7 @@ CheckCollisionAToS:
 	lw $t0, spaceshipPos +4 # coord y of spaceship
 	lw $t1, spaceshipHitBoxBd +4  #hitbox border top of spaceship
 	move $t2, $a1 #coord y of obst
-	li $t3, addonHeight #height of obst
+	li $t3, pickupHeight #height of obst
 	add $t5,$t0,$t1
 	sub $t5,$t5, $t3
 	blt $t2, $t5, check_collision_A_to_S_end
@@ -1153,45 +1157,45 @@ check_collision_A_to_S_end:
 	addi $sp, $sp, 4
       	jr $ra  
           
-CheckCollisionsAddOns:
+CheckCollisionsPickUps:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
-	la $s7, addons
-	li $s6, Max_Addon
-check_collisions_addons_loop:
+	la $s7, pickups
+	li $s6, Max_Pickup
+check_collisions_pickups_loop:
 	lw $s2,8($s7)
-	beqz $s2,skip_check_collision_addon
+	beqz $s2,skip_check_collision_pickup
 	lw $a0,0($s7)
 	lw $a1,4($s7)
 	jal CheckCollisionAToS
-	beqz $v0, skip_check_collision_addon
+	beqz $v0, skip_check_collision_pickup
 	# find collision, pick up
-	beq $s2,1,pick_up_addon1
-	beq $s2,2,pick_up_addon2
-	j skip_check_collision_addon
-pick_up_addon1:
+	beq $s2,1,pick_up_pickup1
+	beq $s2,2,pick_up_pickup2
+	j skip_check_collision_pickup
+pick_up_pickup1:
 	lw $t0, shieldTime
 	addi $t0,$t0,50
 	sw $t0,shieldTime
 	move $a0,$s7
 	sw $zero,8($s7)
-	jal EraseAddOn1
-	j skip_check_collision_addon
-pick_up_addon2:
+	jal ErasePickUp1
+	j skip_check_collision_pickup
+pick_up_pickup2:
 	lw $t0,spaceshipHp
 	addi $t0,$t0,2
-	bgt $t0,Max_Hp,keep_max_health
+	ble $t0,Max_Hp,keep_max_health
 	li $t0,Max_Hp
 keep_max_health:
 	sw $t0,spaceshipHp
 	move $a0,$s7
 	sw $zero,8($s7)
-	jal EraseAddOn2
-skip_check_collision_addon:
+	jal ErasePickUp2
+skip_check_collision_pickup:
 	addi $s7,$s7,12
 	subi $s6,$s6,1
-	bgtz $s6,check_collisions_addons_loop
-check_collisions_addons_end:
+	bgtz $s6,check_collisions_pickups_loop
+check_collisions_pickups_end:
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
       	jr $ra  
@@ -1484,50 +1488,50 @@ skip_erase_obst:
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
 	jr $ra
-#### Add-ons
+#### Pick-ups
 
-DrawAddOns:
+DrawPickUps:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
-	li $s6, Max_Addon
-	la $s5, addons
-draw_addon_loop:
+	li $s6, Max_Pickup
+	la $s5, pickups
+draw_pickup_loop:
 	lw $t0,8($s5)
-	beqz $t0,draw_addon_end
+	beqz $t0,draw_pickup_end
 	move $a0,$s5
-	beq $t0,2,draw_addon2
-draw_addon1:
-	jal DrawAddOn1
-	j draw_addon_end
-draw_addon2:
-	jal DrawAddOn2
-draw_addon_end:
+	beq $t0,2,draw_pickup2
+draw_pickup1:
+	jal DrawPickUp1
+	j draw_pickup_end
+draw_pickup2:
+	jal DrawPickUp2
+draw_pickup_end:
 	addi $s5,$s5,12
 	subi $s6,$s6,1
-	bnez $s6,draw_addon_loop
+	bnez $s6,draw_pickup_loop
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
 	jr $ra
 
-EraseAddOns:
+ErasePickUps:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
-	li $s6, Max_Addon
-	la $s5, addons
-erase_addon_loop:
+	li $s6, Max_Pickup
+	la $s5, pickups
+erase_pickup_loop:
 	lw $t0,8($s5)
-	beqz $t0,erase_addon_end
+	beqz $t0,erase_pickup_end
 	move $a0,$s5
-	beq $t0,2,erase_addon2
-erase_addon1:
-	jal EraseAddOn1
-	j erase_addon_end
-erase_addon2:
-	jal EraseAddOn2
-erase_addon_end:
+	beq $t0,2,erase_pickup2
+erase_pickup1:
+	jal ErasePickUp1
+	j erase_pickup_end
+erase_pickup2:
+	jal ErasePickUp2
+erase_pickup_end:
 	addi $s5,$s5,12
 	subi $s6,$s6,1
-	bnez $s6,erase_addon_loop
+	bnez $s6,erase_pickup_loop
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
 	jr $ra
@@ -3615,45 +3619,6 @@ draw_digit_9:
 	jal DrawSmall9
 	j draw_digit_end
 draw_digit_end:
-	lw $ra, 0($sp)
-	addi $sp, $sp, 4
-	jr $ra
-
-DrawBackGround:
-	addi $sp, $sp, -4
-	sw $ra, 0($sp)
-	li $s1, 10
-draw_stars:
-	jal DrawStar
-    	subi $s1,$s1,1
-    	bnez $s1, draw_stars
-    	lw $ra, 0($sp)
-	addi $sp, $sp, 4
-	jr $ra
-
-DrawStar:
-	addi $sp, $sp, -4
-	sw $ra, 0($sp)
-	li $a1, width  
-   	li $v0, 42  
-    	syscall
-    	move $t0,$a0 #coord x
-    	li $a1, height
-    	subi $a1, $a1, UIheight
-   	li $v0, 42  
-    	syscall
-    	move $t1,$a0 #coord y
-    	li $a1, 5
-   	li $v0, 42  
-    	syscall
-    	sll $a0,$a0,2
-    	la $s0, starsColor
-    	add $t2, $s0,$a0
-    	move $a0,$t0
-    	move $a1,$t1
-    	jal CoordToAddress
-    	lw $t2,0($t2)
-    	sw $t2,0($v0)
 	lw $ra, 0($sp)
 	addi $sp, $sp, 4
 	jr $ra
