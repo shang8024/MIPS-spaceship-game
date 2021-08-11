@@ -27,7 +27,6 @@
 # Are you OKwith us sharing the video with people outside course staff?# -yes / no/ yes, and please share this project githublink as well!
 # yes 
 # https://github.com/shang8024/MIPS-spaceship-game
-# git@github.com:shang8024/MIPS-spaceship-game.git
 # https://gitfront.io/r/user-7822285/e7eb7a841f1f9b63ab5d675efa11b0ca8ad0825e/MIPS-spaceship-game/
 # Any additional information that the TA needs to know:
 # 
@@ -107,7 +106,7 @@ obstacle3: .word	0:42 	#coordx,cordy,movx,movy,HP,move_cd,alive alien
 bullet: .word 0: 60 #coordx,coordy,exist
 currScore: .word 0
 prevScore: .word 99999999
-shieldTime: .word 50
+shieldTime: .word 200
 shootTime: .word 0
 hasShield: .byte 1
 availableBullets: .word 20
@@ -125,6 +124,7 @@ obst2movecd: .word 3
 obst3movecd: .word 2
 hitboxDamage: .word 1
 curr_level: .word 0
+PickUpFactor: .word 0
 .eqv pickupHeight 6
 .eqv pickupWidth 6
 .eqv Num_Pickup_Type 2
@@ -246,6 +246,7 @@ prog_end:	# Jump here if there's an exception.
 initialize:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
+	sw $zero, PickUpFactor
 	sw $zero, curr_level
 	li $t0, hitboxinitDamage
 	sw $t0,hitboxDamage
@@ -278,7 +279,7 @@ initialize:
 	sw $t0, prevScore
 	li $t0, Max_Hp
 	sw $t0, spaceshipHp
-	li $t0,1000
+	li $t0, 200
 	sw $t0,shieldTime
 	la $a0, obstacle1
 	li $t0, Max_Obstacles
@@ -330,6 +331,7 @@ clear_curr_draws:
 	sw $t0,RestartStatus
 	jal EraseObstacles
 	jal EraseSpaceship
+	jal DrawScorePoint
 	li $a2, 0x000000
 	jal DrawGameOver
 	jal EraseUI
@@ -548,6 +550,7 @@ random_pickup_coord:
 	li $a0, 0          # Select random generator 0
 	li $a1, width     # Select upper bound of random number
 	subi $a1,$a1,pickupWidth
+	subi $a1,$a1,Obstacle_Appear_Buffer
 	syscall
 	move $a1,$t0
 	jal CheckCollisionAToS
@@ -1171,12 +1174,14 @@ check_collisions_pickups_loop:
 	jal CheckCollisionAToS
 	beqz $v0, skip_check_collision_pickup
 	# find collision, pick up
+	li $a0,10
+	jal ChangeScore
 	beq $s2,1,pick_up_pickup1
 	beq $s2,2,pick_up_pickup2
 	j skip_check_collision_pickup
 pick_up_pickup1:
 	lw $t0, shieldTime
-	addi $t0,$t0,50
+	addi $t0,$t0, 200
 	sw $t0,shieldTime
 	move $a0,$s7
 	sw $zero,8($s7)
@@ -1184,7 +1189,10 @@ pick_up_pickup1:
 	j skip_check_collision_pickup
 pick_up_pickup2:
 	lw $t0,spaceshipHp
-	addi $t0,$t0,2
+	li $t1,2
+	lw $t2,PickUpFactor
+	srlv $t1,$t1,$t2
+	add $t0,$t1,$t0
 	ble $t0,Max_Hp,keep_max_health
 	li $t0,Max_Hp
 keep_max_health:
@@ -3452,37 +3460,52 @@ UpdateLevel:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)	
 	lw $t0, currScore
-	bge $t0, 10000, level_7
-	bge $t0, 5000, level_6
-	bge $t0, 2500, level_5
-	bge $t0, 1000, level_4
-	bge $t0, 500, level_3
+	bge $t0, 25000, level_9
+	bge $t0, 10000, level_8
+	bge $t0, 5000, level_7
+	bge $t0, 2500, level_6
+	bge $t0, 500, level_4
+	bge $t0, 250, level_3
 	bge $t0, 100, level_2
 	bge $t0, 25, level_1
 	j change_level_end
+level_9:
+	lw $t0, curr_level
+	bge $t0,9, change_level_end
+	li $t0, 3
+	sw $t0, hitboxDamage
+	li $t0,9
+	sw $t0,curr_level
+level_8:
+	lw $t0, curr_level
+	bge $t0,8, change_level_end
+	li $t0, 2
+	sw $t0, scroll_screen_speed
+	li $t0,8
+	sw $t0,curr_level
 level_7:
 	lw $t0, curr_level
 	bge $t0,7, change_level_end
-	li $t0, 2
-	sw $t0, scroll_screen_speed
+	lw $t0, obst1Hp
+	addi $t0, $t0,1
+	sw $t0, obst1Hp
 	li $t0,7
 	sw $t0,curr_level
 level_6:
 	lw $t0, curr_level
 	bge $t0,6, change_level_end
-	lw $t0, obst1Hp
-	addi $t0, $t0,1
-	sw $t0, obst1Hp
-	li $t0,6
-	sw $t0,curr_level
-level_5:
-	lw $t0, curr_level
-	bge $t0,5, change_level_end
 	li $t0, 3
 	sw $t0, obst1Mov + 4
 	li $t0, 2
 	sw $t0, obst2movecd
 	sw $zero, obst3movecd
+	li $t0,6
+	sw $t0,curr_level
+level_5:
+	lw $t0, curr_level
+	bge $t0,5, change_level_end
+	li $t0, 1
+	sw $t0, PickUpFactor
 	li $t0,5
 	sw $t0,curr_level
 level_4:
@@ -3529,17 +3552,25 @@ DrawScorePoint:
 	lw $s3, ScorePointPos +4
 	lw $s4, currScore
 	lw $s5, prevScore
+	lw $t0, RestartStatus
+	beq $t0,1,start_erase_score
 	beq $s4,$s5, draw_score_point_end
+start_erase_score:
 	div $t1, $s4, 10000000 # for the most left digit score[n], get the q of score/(10^n)
 	div $t0, $s5, 10000000
 	li $s6, 10000000
 	li $s7,0
+	lw $t2,RestartStatus
+	beq $t2,1,erase_n_1th_digit
 	beq $t0,$t1,redraw_nth_digit
+erase_n_1th_digit:
 	li $a3,0x000000
 	li $a1,0
 	li $a0,0
 	move $a2, $t0
 	jal DrawDigit
+	lw $t0, RestartStatus
+	beq $t0,1,redraw_nth_digit
 	li $a3,UIColor
 	li $a1,0
 	li $a0,0
@@ -3556,12 +3587,17 @@ redraw_nth_digit:
 	div $s6,$s6,10
 	div $t1, $s4, $s6 # for other digit score[i], get score % 10^n % 10^(n-1) % ... % 10^{i+1} / 10^i
 	div $t0, $s5, $s6
+	lw $t2,RestartStatus
+	beq $t2,1,erase_nth_digit
 	beq $t0,$t1,redraw_nth_digit
+erase_nth_digit:
 	li $a3,0x000000
 	move $a2, $t0
 	li $a1,0
 	move $a0,$s7
 	jal DrawDigit
+	lw $t0, RestartStatus
+	beq $t0,1,redraw_nth_digit
 	li $a3,UIColor
 	div $a2, $s4, $s6
 	li $a1,0
