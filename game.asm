@@ -22,7 +22,7 @@
 # 3. increase in difficulty as game progresses: As score increases, the speed of obstacles will increase and there will be more and more obstacles (of different obstacle types) on the screen.
 # 4. Pick-ups: each time new enemy appears, there might be a new add-on appear on the screen at random place (without overlapping with spaceship). There are two add-ons. A shield that when picked up, spaceship will get a shield or extends shield time. A spaceship-repair that when picked up, spaceship's hp will increase by 2 (and will not exceed max hp of spaceship).
 ## Link to video demonstration for final submission:
-# -https://1drv.ms/v/s!AptoIQPCLqgs-EYA5sx9M2pSGf_d?e=dknctn
+# -https://1drv.ms/v/s!AptoIQPCLqgs-EfZnpnjGtAMYN0O?e=nw1Fvo
 #
 # Are you OKwith us sharing the video with people outside course staff?# -yes / no/ yes, and please share this project githublink as well!
 # yes 
@@ -234,7 +234,7 @@ restart_detect:
 	beqz $t8, restart_detect	# Skip if no key is being pressed down.
 	lw $t2, 4($t9)
 	li $v0, 32
-	li $a0, 600		# Sleep, so we don't loop too quickly.
+	li $a0, 200		# Sleep
 	syscall
 	beq $t2, 0x70, respond_to_p
 	j restart_detect
@@ -1189,10 +1189,9 @@ pick_up_pickup1:
 	j skip_check_collision_pickup
 pick_up_pickup2:
 	lw $t0,spaceshipHp
-	li $t1,2
-	lw $t2,PickUpFactor
-	srlv $t1,$t1,$t2
-	add $t0,$t1,$t0
+	addi $t0,$t0,2
+	lw $t1,PickUpFactor
+	sub $t0,$t0,$t1
 	ble $t0,Max_Hp,keep_max_health
 	li $t0,Max_Hp
 keep_max_health:
@@ -3464,6 +3463,7 @@ UpdateLevel:
 	bge $t0, 10000, level_8
 	bge $t0, 5000, level_7
 	bge $t0, 2500, level_6
+	bge $t0, 1000, level_5
 	bge $t0, 500, level_4
 	bge $t0, 250, level_3
 	bge $t0, 100, level_2
